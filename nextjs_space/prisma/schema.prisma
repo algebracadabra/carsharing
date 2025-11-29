@@ -1,0 +1,161 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/carsharing_app/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  HALTER
+  FAHRER
+  ADMIN
+}
+
+enum FahrzeugStatus {
+  VERFUEGBAR
+  IN_WARTUNG
+  AUSSER_BETRIEB
+}
+
+enum BuchungStatus {
+  GEPLANT
+  LAUFEND
+  ABGESCHLOSSEN
+  STORNIERT
+}
+
+enum BuchungsArt {
+  NORMALFAHRT
+}
+
+enum ZahlungStatus {
+  AUSSTEHEND
+  BESTAETIGT
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  role          UserRole  @default(FAHRER)
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  fahrzeugeAlsHalter Fahrzeug[] @relation("FahrzeugHalter")
+  buchungen     Buchung[]
+  fahrten       Fahrt[]
+  zahlungenAlsFahrer Zahlung[] @relation("ZahlungFahrer")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Fahrzeug {
+  id                   String         @id @default(cuid())
+  name                 String
+  foto                 String?
+  kilometerstand       Int
+  kilometerpauschale   Float
+  halterId             String
+  schluesselablageort  String
+  status               FahrzeugStatus @default(VERFUEGBAR)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  halter     User       @relation("FahrzeugHalter", fields: [halterId], references: [id], onDelete: Cascade)
+  buchungen  Buchung[]
+  fahrten    Fahrt[]
+  zahlungen  Zahlung[]
+}
+
+model Buchung {
+  id          String        @id @default(cuid())
+  fahrzeugId  String
+  userId      String
+  startZeit   DateTime
+  endZeit     DateTime
+  status      BuchungStatus @default(GEPLANT)
+  buchungsart BuchungsArt   @default(NORMALFAHRT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  fahrzeug Fahrzeug @relation(fields: [fahrzeugId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fahrt    Fahrt?
+}
+
+model Fahrt {
+  id                String   @id @default(cuid())
+  buchungId         String   @unique
+  fahrzeugId        String
+  fahrerId          String
+  startKilometer    Int
+  endKilometer      Int
+  gefahreneKm       Int
+  kosten            Float
+  kilometerKonflikt Boolean  @default(false)
+  konfliktGeloest   Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  buchung  Buchung  @relation(fields: [buchungId], references: [id], onDelete: Cascade)
+  fahrzeug Fahrzeug @relation(fields: [fahrzeugId], references: [id], onDelete: Cascade)
+  fahrer   User     @relation(fields: [fahrerId], references: [id], onDelete: Cascade)
+}
+
+model Zahlung {
+  id                    String         @id @default(cuid())
+  fahrerId              String
+  fahrzeugId            String
+  betrag                Float
+  bestaetigung_fahrer   Boolean        @default(false)
+  bestaetigung_halter   Boolean        @default(false)
+  status                ZahlungStatus  @default(AUSSTEHEND)
+  beschreibung          String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  fahrer   User     @relation("ZahlungFahrer", fields: [fahrerId], references: [id], onDelete: Cascade)
+  fahrzeug Fahrzeug @relation(fields: [fahrzeugId], references: [id], onDelete: Cascade)
+}
