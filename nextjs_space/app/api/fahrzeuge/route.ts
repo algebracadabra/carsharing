@@ -23,14 +23,8 @@ export async function GET(request: Request) {
         include: { halter: true },
         orderBy: { createdAt: 'desc' },
       });
-    } else if (userRole === 'HALTER') {
-      fahrzeuge = await prisma.fahrzeug.findMany({
-        where: { halterId: userId },
-        include: { halter: true },
-        orderBy: { createdAt: 'desc' },
-      });
     } else {
-      // FAHRER sees all available vehicles
+      // HALTER and FAHRER see all available vehicles
       fahrzeuge = await prisma.fahrzeug.findMany({
         include: { halter: true },
         orderBy: { createdAt: 'desc' },
