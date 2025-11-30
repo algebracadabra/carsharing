@@ -23,6 +23,38 @@ export default function FahrtenPage() {
   const [creating, setCreating] = useState(false);
   const [konfliktWarnung, setKonfliktWarnung] = useState<any>(null);
 
+  // Helper function to calculate expected kilometer reading from previous trip
+  const getExpectedKilometer = (currentFahrt: any) => {
+    if (!currentFahrt?.fahrzeugId) return null;
+    
+    // Find previous trip for the same vehicle
+    const vehicleTrips = fahrten
+      ?.filter((f: any) => f?.fahrzeugId === currentFahrt.fahrzeugId)
+      ?.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    
+    const currentIndex = vehicleTrips?.findIndex((f: any) => f.id === currentFahrt.id);
+    if (currentIndex > 0) {
+      return vehicleTrips[currentIndex - 1]?.endKilometer;
+    }
+    return null;
+  };
+
+  // Helper function to get conflict details
+  const getKonfliktDetails = (fahrt: any) => {
+    if (!fahrt?.kilometerKonflikt || fahrt?.konfliktGeloest) return null;
+    
+    const expectedKm = getExpectedKilometer(fahrt);
+    if (expectedKm === null) return null;
+    
+    const difference = fahrt.startKilometer - expectedKm;
+    return {
+      expected: expectedKm,
+      actual: fahrt.startKilometer,
+      difference: Math.abs(difference),
+      type: difference > 0 ? 'höher' : 'niedriger'
+    };
+  };
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
@@ -225,11 +257,25 @@ export default function FahrtenPage() {
                     <p className="text-2xl font-bold text-blue-600">
                       {fahrt?.kosten?.toFixed?.(2) ?? '0.00'} €
                     </p>
-                    {fahrt?.kilometerKonflikt && !fahrt?.konfliktGeloest && (
-                      <span className="text-xs text-orange-600 font-medium">
-                        Kilometerkonflikt
-                      </span>
-                    )}
+                    {(() => {
+                      const konfliktDetails = getKonfliktDetails(fahrt);
+                      if (!konfliktDetails) return null;
+                      
+                      return (
+                        <div className="text-xs text-orange-600 font-medium mt-1">
+                          <div className="mb-1">Kilometerkonflikt</div>
+                          <div className="text-xs text-orange-500">
+                            Erwartet: {konfliktDetails.expected?.toLocaleString('de-DE')} km
+                          </div>
+                          <div className="text-xs text-orange-500">
+                            Eingegeben: {konfliktDetails.actual?.toLocaleString('de-DE')} km
+                          </div>
+                          <div className="text-xs text-orange-500">
+                            Differenz: {konfliktDetails.difference?.toLocaleString('de-DE')} km {konfliktDetails.type}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
