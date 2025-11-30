@@ -10,6 +10,7 @@ export default function FahrtenPage() {
   const router = useRouter();
   const [fahrten, setFahrten] = useState<any[]>([]);
   const [offeneBuchungen, setOffeneBuchungen] = useState<any[]>([]);
+  const [buchungen, setBuchungen] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedBuchung, setSelectedBuchung] = useState<any>(null);
@@ -48,6 +49,7 @@ export default function FahrtenPage() {
 
       if (buchungenRes.ok) {
         const data = await buchungenRes.json();
+        setBuchungen(data ?? []);
         const offene = data?.filter?.((b: any) => b?.status === 'ABGESCHLOSSEN' && !b?.fahrt) ?? [];
         setOffeneBuchungen(offene);
       }
@@ -56,6 +58,13 @@ export default function FahrtenPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenEmptyModal = () => {
+    setSelectedBuchung(null);
+    setFormData({ buchungId: '', startKilometer: '', endKilometer: '' });
+    setShowModal(true);
+    setKonfliktWarnung(null);
   };
 
   const handleOpenModal = (buchung: any) => {
@@ -125,9 +134,18 @@ export default function FahrtenPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Fahrten</h1>
-        <p className="text-gray-600">Erfassen und verwalten Sie Ihre Fahrten</p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Fahrten</h1>
+          <p className="text-gray-600">Erfassen und verwalten Sie Ihre Fahrten</p>
+        </div>
+        <button
+          onClick={handleOpenEmptyModal}
+          className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+        >
+          <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
+          Fahrt erfassen
+        </button>
       </div>
 
       {/* Offene Fahrten */}
@@ -221,7 +239,7 @@ export default function FahrtenPage() {
       </div>
 
       {/* Modal */}
-      {showModal && selectedBuchung && (
+      {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
             <div className="flex items-center justify-between mb-6">
@@ -239,11 +257,49 @@ export default function FahrtenPage() {
               </button>
             </div>
 
-            <div className="bg-blue-50 rounded-lg p-4 mb-6">
-              <p className="font-semibold text-gray-900">{selectedBuchung?.fahrzeug?.name}</p>
-              <p className="text-sm text-gray-600">
-                Aktueller Kilometerstand: {selectedBuchung?.fahrzeug?.kilometerstand?.toLocaleString?.('de-DE') ?? 0} km
-              </p>
+            <div className="mb-6 space-y-4">
+              <div>
+                <label htmlFor="buchung" className="block text-sm font-medium text-gray-700 mb-2">
+                  Buchung auswählen *
+                </label>
+                <select
+                  id="buchung"
+                  value={formData.buchungId}
+                  onChange={(e) => {
+                    const buchungId = e.target.value;
+                    const buchung = buchungen?.find?.((b: any) => b?.id === buchungId) ?? null;
+                    setSelectedBuchung(buchung);
+                    setFormData({
+                      buchungId,
+                      startKilometer: buchung?.fahrzeug?.kilometerstand?.toString?.() ?? '',
+                      endKilometer: '',
+                    });
+                    setKonfliktWarnung(null);
+                  }}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="" disabled>
+                    Bitte Buchung wählen
+                  </option>
+                  {buchungen
+                    ?.filter?.((b: any) => !b?.fahrt)
+                    ?.map?.((b: any) => (
+                      <option key={b?.id} value={b?.id}>
+                        {b?.fahrzeug?.name} – {b?.startZeit ? new Date(b.startZeit).toLocaleString('de-DE') : ''}
+                      </option>
+                    )) ?? null}
+                </select>
+              </div>
+
+              {selectedBuchung && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <p className="font-semibold text-gray-900">{selectedBuchung?.fahrzeug?.name}</p>
+                  <p className="text-sm text-gray-600">
+                    Aktueller Kilometerstand: {selectedBuchung?.fahrzeug?.kilometerstand?.toLocaleString?.('de-DE') ?? 0} km
+                  </p>
+                </div>
+              )}
             </div>
 
             {error && (
