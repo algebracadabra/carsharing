@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Route, Plus, Car, AlertCircle, X } from 'lucide-react';
+import { Route, Plus, Car, AlertCircle, X, Edit } from 'lucide-react';
 
 export default function FahrtenPage() {
   const { data: session, status } = useSession() || {};
@@ -22,6 +22,8 @@ export default function FahrtenPage() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [konfliktWarnung, setKonfliktWarnung] = useState<any>(null);
+  const [editingFahrt, setEditingFahrt] = useState<any>(null);
+  const [updating, setUpdating] = useState(false);
 
   // Helper function to calculate expected kilometer reading from previous trip
   const getExpectedKilometer = (currentFahrt: any) => {
@@ -94,6 +96,7 @@ export default function FahrtenPage() {
 
   const handleOpenEmptyModal = () => {
     setSelectedBuchung(null);
+    setEditingFahrt(null);
     setFormData({ buchungId: '', startKilometer: '', endKilometer: '' });
     setShowModal(true);
     setKonfliktWarnung(null);
@@ -101,10 +104,23 @@ export default function FahrtenPage() {
 
   const handleOpenModal = (buchung: any) => {
     setSelectedBuchung(buchung);
+    setEditingFahrt(null);
     setFormData({
       buchungId: buchung.id,
       startKilometer: buchung?.fahrzeug?.kilometerstand?.toString?.() ?? '',
       endKilometer: '',
+    });
+    setShowModal(true);
+    setKonfliktWarnung(null);
+  };
+
+  const handleOpenEditModal = (fahrt: any) => {
+    setEditingFahrt(fahrt);
+    setSelectedBuchung(null);
+    setFormData({
+      buchungId: '',
+      startKilometer: fahrt.startKilometer.toString(),
+      endKilometer: fahrt.endKilometer.toString(),
     });
     setShowModal(true);
     setKonfliktWarnung(null);
@@ -124,6 +140,38 @@ export default function FahrtenPage() {
       });
     } else {
       setKonfliktWarnung(null);
+    }
+  };
+
+  const handleUpdateFahrt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setUpdating(true);
+
+    try {
+      const response = await fetch(`/api/fahrten/${editingFahrt.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startKilometer: formData.startKilometer,
+          endKilometer: formData.endKilometer,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Fehler beim Aktualisieren');
+      }
+
+      setShowModal(false);
+      setEditingFahrt(null);
+      setFormData({ buchungId: '', startKilometer: '', endKilometer: '' });
+      setKonfliktWarnung(null);
+      fetchData();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -155,6 +203,8 @@ export default function FahrtenPage() {
       setCreating(false);
     }
   };
+
+  const handleFormSubmit = editingFahrt ? handleUpdateFahrt : handleCreateFahrt;
 
   if (loading || status === 'loading') {
     return (
@@ -237,6 +287,15 @@ export default function FahrtenPage() {
                     <div className="flex items-center gap-2 mb-2">
                       <Car className="w-5 h-5 text-blue-600" aria-hidden="true" />
                       <h3 className="font-bold text-gray-900">{fahrt?.fahrzeug?.name}</h3>
+                      {fahrt?.fahrerId === (session?.user as any)?.id && (
+                        <button
+                          onClick={() => handleOpenEditModal(fahrt)}
+                          className="ml-2 p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Fahrt bearbeiten"
+                        >
+                          <Edit className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600">
                       <div>
@@ -289,7 +348,9 @@ export default function FahrtenPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Fahrt erfassen</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingFahrt ? 'Fahrt bearbeiten' : 'Fahrt erfassen'}
+              </h2>
               <button
                 onClick={() => {
                   setShowModal(false);
@@ -304,10 +365,11 @@ export default function FahrtenPage() {
             </div>
 
             <div className="mb-6 space-y-4">
-              <div>
-                <label htmlFor="buchung" className="block text-sm font-medium text-gray-700 mb-2">
-                  Buchung auswählen *
-                </label>
+              {!editingFahrt && (
+                <div>
+                  <label htmlFor="buchung" className="block text-sm font-medium text-gray-700 mb-2">
+                    Buchung auswählen *
+                  </label>
                 <select
                   id="buchung"
                   value={formData.buchungId}
@@ -336,7 +398,17 @@ export default function FahrtenPage() {
                       </option>
                     )) ?? null}
                 </select>
-              </div>
+                </div>
+              )}
+
+              {editingFahrt && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <p className="font-semibold text-gray-900">{editingFahrt?.fahrzeug?.name}</p>
+                  <p className="text-sm text-gray-600">
+                    Ursprüngliche Fahrt: {editingFahrt?.startKilometer} - {editingFahrt?.endKilometer} km
+                  </p>
+                </div>
+              )}
 
               {selectedBuchung && (
                 <div className="bg-blue-50 rounded-lg p-4">
@@ -362,7 +434,7 @@ export default function FahrtenPage() {
               </div>
             )}
 
-            <form onSubmit={handleCreateFahrt} className="space-y-4">
+            <form onSubmit={handleFormSubmit} className="space-y-4">
               <div>
                 <label htmlFor="startKilometer" className="block text-sm font-medium text-gray-700 mb-2">
                   Startkilometer *
@@ -408,7 +480,7 @@ export default function FahrtenPage() {
                     <span className="font-medium">Kosten:</span>{' '}
                     {(
                       (parseInt(formData.endKilometer) - parseInt(formData.startKilometer)) *
-                      (selectedBuchung?.fahrzeug?.kilometerpauschale ?? 0)
+                      ((selectedBuchung?.fahrzeug?.kilometerpauschale ?? editingFahrt?.fahrzeug?.kilometerpauschale) ?? 0)
                     ).toFixed(2)}{' '}
                     €
                   </p>
@@ -418,11 +490,11 @@ export default function FahrtenPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  disabled={creating}
+                  disabled={creating || updating}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
                   aria-label="Fahrt erfassen"
                 >
-                  {creating ? 'Wird erfasst...' : 'Erfassen'}
+                  {creating || updating ? (editingFahrt ? 'Wird aktualisiert...' : 'Wird erfasst...') : (editingFahrt ? 'Aktualisieren' : 'Erfassen')}
                 </button>
                 <button
                   type="button"
@@ -430,6 +502,7 @@ export default function FahrtenPage() {
                     setShowModal(false);
                     setError('');
                     setKonfliktWarnung(null);
+                    setEditingFahrt(null);
                   }}
                   className="px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
                 >
