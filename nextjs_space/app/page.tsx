@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth-options';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
-import { Car, Calendar, Route, TrendingUp, AlertCircle } from 'lucide-react';
+import { Car, Calendar, Route, TrendingUp, AlertCircle, AlertTriangle } from 'lucide-react';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -19,6 +19,7 @@ export default async function DashboardPage() {
   let fahrzeuge: any[] = [];
   let buchungen: any[] = [];
   let offeneFahrten: any[] = [];
+  let kilometerKonflikte: any[] = [];
   let stats = {
     totalFahrzeuge: 0,
     totalBuchungen: 0,
@@ -47,6 +48,16 @@ export default async function DashboardPage() {
       include: { fahrzeug: true, user: true },
       take: 5,
     });
+    // Admin sees all kilometer conflicts
+    kilometerKonflikte = await prisma.fahrt.findMany({
+      where: {
+        kilometerKonflikt: true,
+        konfliktGeloest: false,
+      },
+      include: { fahrzeug: { include: { halter: true } }, fahrer: true, buchung: true },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
   } else if (userRole === 'HALTER') {
     fahrzeuge = await prisma.fahrzeug.findMany({
       where: { halterId: userId },
@@ -74,6 +85,17 @@ export default async function DashboardPage() {
       },
       include: { fahrzeug: true, user: true },
       take: 5,
+    });
+    // HALTER sees kilometer conflicts on their own vehicles
+    kilometerKonflikte = await prisma.fahrt.findMany({
+      where: {
+        fahrzeug: { halterId: userId },
+        kilometerKonflikt: true,
+        konfliktGeloest: false,
+      },
+      include: { fahrzeug: true, fahrer: true, buchung: true },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
     });
   } else {
     // FAHRER
@@ -299,6 +321,57 @@ export default async function DashboardPage() {
                   <button className="text-sm font-medium text-orange-700 hover:text-orange-800 px-4 py-2 bg-white rounded-lg border border-orange-200">
                     Fahrt erfassen
                   </button>
+                </Link>
+              )) ?? null}
+            </div>
+          </div>
+        )}
+
+        {/* Issues - Kilometer Konflikte (nur für HALTER und ADMIN) */}
+        {(userRole === 'ADMIN' || userRole === 'HALTER') && kilometerKonflikte.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 lg:col-span-2 border-l-4 border-red-500">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600" aria-hidden="true" />
+                <h2 className="text-xl font-bold text-gray-900">Issues</h2>
+                <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-full">
+                  {kilometerKonflikte.length}
+                </span>
+              </div>
+              <Link
+                href="/fahrten"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Alle Fahrten anzeigen
+              </Link>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Diese Fahrten haben Kilometerstand-Konflikte, die überprüft werden sollten.
+            </p>
+            <div className="space-y-3">
+              {kilometerKonflikte?.map?.((fahrt: any) => (
+                <Link
+                  key={fahrt?.id}
+                  href="/fahrten"
+                  className="flex items-center gap-4 p-4 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 transition-colors"
+                >
+                  <div className="bg-red-100 p-3 rounded-lg">
+                    <AlertTriangle className="w-6 h-6 text-red-600" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">
+                      Kilometerkonflikt: {fahrt?.fahrzeug?.name}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Fahrer: {fahrt?.fahrer?.name} &bull; Start: {fahrt?.startKilometer?.toLocaleString?.('de-DE')} km &bull; Ende: {fahrt?.endKilometer?.toLocaleString?.('de-DE')} km
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Fahrt vom {new Date(fahrt?.createdAt)?.toLocaleDateString?.('de-DE') ?? ''}
+                    </p>
+                  </div>
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-100 text-red-700">
+                    Ungelöst
+                  </span>
                 </Link>
               )) ?? null}
             </div>
