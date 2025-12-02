@@ -21,9 +21,9 @@ export default function FahrzeugDetailPage() {
   const [editingCosts, setEditingCosts] = useState(false);
   const [savingCosts, setSavingCosts] = useState(false);
   const [costFormData, setCostFormData] = useState({
-    treibstoffKosten: '0',
+    treibstoffKostenIncrement: '',
     fixkosten: '0',
-    wartungsReparaturKosten: '0',
+    wartungsReparaturKostenIncrement: '',
   });
 
   const userRole = (session?.user as any)?.role;
@@ -49,9 +49,9 @@ export default function FahrzeugDetailPage() {
         setFahrzeug(data);
         
         setCostFormData({
-          treibstoffKosten: (data.treibstoffKosten ?? 0).toString(),
+          treibstoffKostenIncrement: '',
           fixkosten: (data.fixkosten ?? 0).toString(),
-          wartungsReparaturKosten: (data.wartungsReparaturKosten ?? 0).toString(),
+          wartungsReparaturKostenIncrement: '',
         });
         
         if (data?.foto) {
@@ -77,9 +77,9 @@ export default function FahrzeugDetailPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          treibstoffKosten: costFormData.treibstoffKosten,
+          treibstoffKostenIncrement: costFormData.treibstoffKostenIncrement || undefined,
           fixkosten: costFormData.fixkosten,
-          wartungsReparaturKosten: costFormData.wartungsReparaturKosten,
+          wartungsReparaturKostenIncrement: costFormData.wartungsReparaturKostenIncrement || undefined,
         }),
       });
 
@@ -280,9 +280,9 @@ export default function FahrzeugDetailPage() {
                 onClick={() => {
                   setEditingCosts(false);
                   setCostFormData({
-                    treibstoffKosten: (fahrzeug?.treibstoffKosten ?? 0).toString(),
+                    treibstoffKostenIncrement: '',
                     fixkosten: (fahrzeug?.fixkosten ?? 0).toString(),
-                    wartungsReparaturKosten: (fahrzeug?.wartungsReparaturKosten ?? 0).toString(),
+                    wartungsReparaturKostenIncrement: '',
                   });
                 }}
                 className="p-2 hover:bg-red-100 rounded-lg transition-colors"
@@ -299,16 +299,21 @@ export default function FahrzeugDetailPage() {
             <div className="bg-orange-50 rounded-lg p-6">
               <div className="flex items-center gap-3 mb-2">
                 <Fuel className="w-5 h-5 text-orange-600" aria-hidden="true" />
-                <label htmlFor="treibstoffKosten" className="font-semibold text-gray-900">Treibstoffkosten</label>
+                <label htmlFor="treibstoffKosten" className="font-semibold text-gray-900">Treibstoffkosten hinzufügen</label>
               </div>
+              <p className="text-sm text-gray-600 mb-2">
+                Aktuell: {fahrzeug?.treibstoffKosten?.toFixed?.(2) ?? '0.00'} €
+              </p>
               <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-orange-600">+</span>
                 <input
                   id="treibstoffKosten"
                   type="number"
                   step="0.01"
                   min="0"
-                  value={costFormData.treibstoffKosten}
-                  onChange={(e) => setCostFormData({ ...costFormData, treibstoffKosten: e.target.value })}
+                  placeholder="0.00"
+                  value={costFormData.treibstoffKostenIncrement}
+                  onChange={(e) => setCostFormData({ ...costFormData, treibstoffKostenIncrement: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-bold"
                 />
                 <span className="text-lg font-bold text-orange-600">€</span>
@@ -337,16 +342,21 @@ export default function FahrzeugDetailPage() {
             <div className="bg-rose-50 rounded-lg p-6">
               <div className="flex items-center gap-3 mb-2">
                 <Wrench className="w-5 h-5 text-rose-600" aria-hidden="true" />
-                <label htmlFor="wartungsReparaturKosten" className="font-semibold text-gray-900">Wartung & Reparatur</label>
+                <label htmlFor="wartungsReparaturKosten" className="font-semibold text-gray-900">Wartung & Reparatur hinzufügen</label>
               </div>
+              <p className="text-sm text-gray-600 mb-2">
+                Aktuell: {fahrzeug?.wartungsReparaturKosten?.toFixed?.(2) ?? '0.00'} €
+              </p>
               <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-rose-600">+</span>
                 <input
                   id="wartungsReparaturKosten"
                   type="number"
                   step="0.01"
                   min="0"
-                  value={costFormData.wartungsReparaturKosten}
-                  onChange={(e) => setCostFormData({ ...costFormData, wartungsReparaturKosten: e.target.value })}
+                  placeholder="0.00"
+                  value={costFormData.wartungsReparaturKostenIncrement}
+                  onChange={(e) => setCostFormData({ ...costFormData, wartungsReparaturKostenIncrement: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-lg font-bold"
                 />
                 <span className="text-lg font-bold text-rose-600">€</span>

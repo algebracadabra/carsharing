@@ -98,16 +98,26 @@ export async function PATCH(
           : undefined,
         schluesselablageort: body.schluesselablageort,
         status: body.status,
-        treibstoffKosten: body.treibstoffKosten !== undefined
-          ? parseFloat(body.treibstoffKosten)
-          : undefined,
         fixkosten: body.fixkosten !== undefined
           ? parseFloat(body.fixkosten)
           : undefined,
-        wartungsReparaturKosten: body.wartungsReparaturKosten !== undefined
-          ? parseFloat(body.wartungsReparaturKosten)
-          : undefined,
       };
+
+      // treibstoffKosten is incremental - add to existing value
+      if (body.treibstoffKostenIncrement !== undefined) {
+        const increment = parseFloat(body.treibstoffKostenIncrement);
+        if (increment > 0) {
+          updateData.treibstoffKosten = (fahrzeug.treibstoffKosten ?? 0) + increment;
+        }
+      }
+
+      // wartungsReparaturKosten is incremental - add to existing value
+      if (body.wartungsReparaturKostenIncrement !== undefined) {
+        const increment = parseFloat(body.wartungsReparaturKostenIncrement);
+        if (increment > 0) {
+          updateData.wartungsReparaturKosten = (fahrzeug.wartungsReparaturKosten ?? 0) + increment;
+        }
+      }
       // Remove undefined values
       Object.keys(updateData).forEach(
         (key) => updateData[key] === undefined && delete updateData[key]
