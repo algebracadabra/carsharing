@@ -68,11 +68,11 @@ Example configuration for local development:
 
 ```env
 DATABASE_URL="postgresql://postgres:yourpassword@localhost:5432/carsharing?schema=public"
-NEXTAUTH_SECRET=your_nextauth_secret
-AWS_PROFILE=hosted_storage
-AWS_REGION=us-west-2
-AWS_BUCKET_NAME=abacusai-apps-dfa0716c90bd4ceef77cdd5b-us-west-2
-AWS_FOLDER_PREFIX=13088/
+NEXTAUTH_SECRET=<generate-with-openssl-rand-base64-32>
+AWS_PROFILE=<your-aws-profile>
+AWS_REGION=<your-aws-region>
+AWS_BUCKET_NAME=<your-bucket-name>
+AWS_FOLDER_PREFIX=<your-folder-prefix>/
 NEXTAUTH_URL=http://localhost:3000
 ```
 
