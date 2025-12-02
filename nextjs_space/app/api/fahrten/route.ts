@@ -18,19 +18,20 @@ export async function GET(request: Request) {
     let fahrten;
 
     if (userRole === 'ADMIN') {
+      // Admin sieht alle Fahrten
       fahrten = await prisma.fahrt.findMany({
-        include: { fahrzeug: true, fahrer: true, buchung: true },
-        orderBy: { createdAt: 'desc' },
-      });
-    } else if (userRole === 'HALTER') {
-      fahrten = await prisma.fahrt.findMany({
-        where: { fahrzeug: { halterId: userId } },
         include: { fahrzeug: true, fahrer: true, buchung: true },
         orderBy: { createdAt: 'desc' },
       });
     } else {
+      // User sieht eigene Fahrten + Fahrten auf eigenen Fahrzeugen
       fahrten = await prisma.fahrt.findMany({
-        where: { fahrerId: userId },
+        where: {
+          OR: [
+            { fahrerId: userId },
+            { fahrzeug: { halterId: userId } },
+          ],
+        },
         include: { fahrzeug: true, fahrer: true, buchung: true },
         orderBy: { createdAt: 'desc' },
       });

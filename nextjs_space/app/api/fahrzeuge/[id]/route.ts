@@ -68,61 +68,49 @@ export async function PATCH(
 
     const body = await request.json();
 
-    // Check permissions
+    // Check permissions - nur Owner oder Admin können bearbeiten
     const isOwner = fahrzeug.halterId === userId;
     const isAdmin = userRole === 'ADMIN';
-    const isFahrer = userRole === 'FAHRER';
 
-    if (!isOwner && !isAdmin && !isFahrer) {
+    if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 });
     }
 
-    // Fahrer can only edit schluesselablageort and kilometerpauschale
-    let updateData: any = {};
+    // Owner und Admin können alles bearbeiten
+    let updateData: any = {
+      name: body.name,
+      foto: body.foto,
+      kilometerstand: body.kilometerstand ? parseInt(body.kilometerstand) : undefined,
+      kilometerpauschale: body.kilometerpauschale
+        ? parseFloat(body.kilometerpauschale)
+        : undefined,
+      schluesselablageort: body.schluesselablageort,
+      status: body.status,
+      fixkosten: body.fixkosten !== undefined
+        ? parseFloat(body.fixkosten)
+        : undefined,
+    };
 
-    if (isFahrer && !isOwner && !isAdmin) {
-      if (body.schluesselablageort !== undefined) {
-        updateData.schluesselablageort = body.schluesselablageort;
+    // treibstoffKosten is incremental - add to existing value
+    if (body.treibstoffKostenIncrement !== undefined) {
+      const increment = parseFloat(body.treibstoffKostenIncrement);
+      if (increment > 0) {
+        updateData.treibstoffKosten = (fahrzeug.treibstoffKosten ?? 0) + increment;
       }
-      if (body.kilometerpauschale !== undefined) {
-        updateData.kilometerpauschale = parseFloat(body.kilometerpauschale);
-      }
-    } else {
-      // Halter and Admin can edit everything
-      updateData = {
-        name: body.name,
-        foto: body.foto,
-        kilometerstand: body.kilometerstand ? parseInt(body.kilometerstand) : undefined,
-        kilometerpauschale: body.kilometerpauschale
-          ? parseFloat(body.kilometerpauschale)
-          : undefined,
-        schluesselablageort: body.schluesselablageort,
-        status: body.status,
-        fixkosten: body.fixkosten !== undefined
-          ? parseFloat(body.fixkosten)
-          : undefined,
-      };
-
-      // treibstoffKosten is incremental - add to existing value
-      if (body.treibstoffKostenIncrement !== undefined) {
-        const increment = parseFloat(body.treibstoffKostenIncrement);
-        if (increment > 0) {
-          updateData.treibstoffKosten = (fahrzeug.treibstoffKosten ?? 0) + increment;
-        }
-      }
-
-      // wartungsReparaturKosten is incremental - add to existing value
-      if (body.wartungsReparaturKostenIncrement !== undefined) {
-        const increment = parseFloat(body.wartungsReparaturKostenIncrement);
-        if (increment > 0) {
-          updateData.wartungsReparaturKosten = (fahrzeug.wartungsReparaturKosten ?? 0) + increment;
-        }
-      }
-      // Remove undefined values
-      Object.keys(updateData).forEach(
-        (key) => updateData[key] === undefined && delete updateData[key]
-      );
     }
+
+    // wartungsReparaturKosten is incremental - add to existing value
+    if (body.wartungsReparaturKostenIncrement !== undefined) {
+      const increment = parseFloat(body.wartungsReparaturKostenIncrement);
+      if (increment > 0) {
+        updateData.wartungsReparaturKosten = (fahrzeug.wartungsReparaturKosten ?? 0) + increment;
+      }
+    }
+
+    // Remove undefined values
+    Object.keys(updateData).forEach(
+      (key) => updateData[key] === undefined && delete updateData[key]
+    );
 
     const updatedFahrzeug = await prisma.fahrzeug.update({
       where: { id: params.id },

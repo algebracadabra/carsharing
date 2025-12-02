@@ -149,16 +149,14 @@ export default function AbrechnungPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Abrechnung</h1>
           <p className="text-gray-600">Verwalten Sie Kontostände und Zahlungen</p>
         </div>
-        {(userRole === 'ADMIN' || userRole === 'HALTER' || userRole === 'FAHRER') && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
-            aria-label="Neue Zahlung erfassen"
-          >
-            <Plus className="w-5 h-5" aria-hidden="true" />
-            Zahlung erfassen
-          </button>
-        )}
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
+          aria-label="Neue Zahlung erfassen"
+        >
+          <Plus className="w-5 h-5" aria-hidden="true" />
+          Zahlung erfassen
+        </button>
       </div>
 
       {/* Kontostaende */}
@@ -331,7 +329,12 @@ export default function AbrechnungPage() {
                   aria-required="true"
                 >
                   <option value="">Fahrer auswählen</option>
-                  {Object.values(kontostaende)?.map?.((k: any) => (
+                  {/* Dedupliziere Fahrer */}
+                  {Array.from(
+                    new Map(
+                      Object.values(kontostaende)?.map((k: any) => [k?.fahrerId, k])
+                    ).values()
+                  )?.map?.((k: any) => (
                     <option key={k?.fahrerId} value={k?.fahrerId}>
                       {k?.fahrerName}
                     </option>

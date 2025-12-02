@@ -18,19 +18,20 @@ export async function GET(request: Request) {
     let zahlungen;
 
     if (userRole === 'ADMIN') {
+      // Admin sieht alle Zahlungen
       zahlungen = await prisma.zahlung.findMany({
-        include: { fahrer: true, fahrzeug: { include: { halter: true } } },
-        orderBy: { createdAt: 'desc' },
-      });
-    } else if (userRole === 'HALTER') {
-      zahlungen = await prisma.zahlung.findMany({
-        where: { fahrzeug: { halterId: userId } },
         include: { fahrer: true, fahrzeug: { include: { halter: true } } },
         orderBy: { createdAt: 'desc' },
       });
     } else {
+      // User sieht eigene Zahlungen + Zahlungen für eigene Fahrzeuge
       zahlungen = await prisma.zahlung.findMany({
-        where: { fahrerId: userId },
+        where: {
+          OR: [
+            { fahrerId: userId },
+            { fahrzeug: { halterId: userId } },
+          ],
+        },
         include: { fahrer: true, fahrzeug: { include: { halter: true } } },
         orderBy: { createdAt: 'desc' },
       });

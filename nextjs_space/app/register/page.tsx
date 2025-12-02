@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { Car, Mail, Lock, User, Shield, AlertCircle } from 'lucide-react';
+import { Car, Mail, Lock, User, AlertCircle } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,7 +13,6 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     name: '',
-    role: 'FAHRER',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,7 +41,6 @@ export default function RegisterPage() {
           email: formData.email,
           password: formData.password,
           name: formData.name,
-          role: formData.role,
         }),
       });
 
@@ -133,26 +131,6 @@ export default function RegisterPage() {
                   placeholder="ihre-email@beispiel.de"
                   aria-required="true"
                 />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
-                Rolle
-              </label>
-              <div className="relative">
-                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" aria-hidden="true" />
-                <select
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
-                  aria-required="true"
-                >
-                  <option value="FAHRER">Fahrer</option>
-                  <option value="HALTER">Halter</option>
-                  <option value="ADMIN">Administrator</option>
-                </select>
               </div>
             </div>
 

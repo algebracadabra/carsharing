@@ -22,47 +22,47 @@ async function main() {
     },
   });
 
-  const halter1 = await prisma.user.upsert({
-    where: { email: 'halter@test.de' },
+  const user1 = await prisma.user.upsert({
+    where: { email: 'max@test.de' },
     update: {},
     create: {
-      email: 'halter@test.de',
+      email: 'max@test.de',
       name: 'Max Mustermann',
       password: hashedTestPassword,
-      role: 'HALTER',
+      role: 'USER',
     },
   });
 
-  const halter2 = await prisma.user.upsert({
-    where: { email: 'halter2@test.de' },
+  const user2 = await prisma.user.upsert({
+    where: { email: 'anna@test.de' },
     update: {},
     create: {
-      email: 'halter2@test.de',
+      email: 'anna@test.de',
       name: 'Anna Schmidt',
       password: hashedTestPassword,
-      role: 'HALTER',
+      role: 'USER',
     },
   });
 
-  const fahrer1 = await prisma.user.upsert({
-    where: { email: 'fahrer@test.de' },
+  const user3 = await prisma.user.upsert({
+    where: { email: 'lisa@test.de' },
     update: {},
     create: {
-      email: 'fahrer@test.de',
+      email: 'lisa@test.de',
       name: 'Lisa Müller',
       password: hashedTestPassword,
-      role: 'FAHRER',
+      role: 'USER',
     },
   });
 
-  const fahrer2 = await prisma.user.upsert({
-    where: { email: 'fahrer2@test.de' },
+  const user4 = await prisma.user.upsert({
+    where: { email: 'tom@test.de' },
     update: {},
     create: {
-      email: 'fahrer2@test.de',
+      email: 'tom@test.de',
       name: 'Tom Weber',
       password: hashedTestPassword,
-      role: 'FAHRER',
+      role: 'USER',
     },
   });
 
@@ -77,7 +77,7 @@ async function main() {
       name: 'VW Golf 8',
       kilometerstand: 25000,
       kilometerpauschale: 0.35,
-      halterId: halter1.id,
+      halterId: user1.id,
       schluesselablageort: 'Schlüsselkasten im Eingang',
       status: 'VERFUEGBAR',
     },
@@ -91,7 +91,7 @@ async function main() {
       name: 'BMW 3er',
       kilometerstand: 15000,
       kilometerpauschale: 0.45,
-      halterId: halter1.id,
+      halterId: user1.id,
       schluesselablageort: 'Tiefgarage, Parkplatz 12',
       status: 'VERFUEGBAR',
     },
@@ -105,7 +105,7 @@ async function main() {
       name: 'Audi A4',
       kilometerstand: 50000,
       kilometerpauschale: 0.40,
-      halterId: halter2.id,
+      halterId: user2.id,
       schluesselablageort: 'Büro Rezeption',
       status: 'VERFUEGBAR',
     },
@@ -119,7 +119,7 @@ async function main() {
       name: 'Mercedes Sprinter',
       kilometerstand: 80000,
       kilometerpauschale: 0.55,
-      halterId: halter2.id,
+      halterId: user2.id,
       schluesselablageort: 'Werkstatt Schlüsselbrett',
       status: 'IN_WARTUNG',
     },
@@ -139,7 +139,7 @@ async function main() {
   await prisma.buchung.create({
     data: {
       fahrzeugId: fahrzeug1.id,
-      userId: fahrer1.id,
+      userId: user3.id,
       startZeit: tomorrow,
       endZeit: new Date(tomorrow.getTime() + 4 * 60 * 60 * 1000), // +4 hours
       status: 'GEPLANT',
@@ -150,7 +150,7 @@ async function main() {
   await prisma.buchung.create({
     data: {
       fahrzeugId: fahrzeug2.id,
-      userId: fahrer2.id,
+      userId: user4.id,
       startZeit: nextWeek,
       endZeit: new Date(nextWeek.getTime() + 2 * 60 * 60 * 1000), // +2 hours
       status: 'GEPLANT',
@@ -161,7 +161,7 @@ async function main() {
   const completedBuchung = await prisma.buchung.create({
     data: {
       fahrzeugId: fahrzeug1.id,
-      userId: fahrer1.id,
+      userId: user3.id,
       startZeit: yesterday,
       endZeit: new Date(yesterday.getTime() + 3 * 60 * 60 * 1000),
       status: 'ABGESCHLOSSEN',
@@ -176,7 +176,7 @@ async function main() {
     data: {
       buchungId: completedBuchung.id,
       fahrzeugId: fahrzeug1.id,
-      fahrerId: fahrer1.id,
+      fahrerId: user3.id,
       startKilometer: 24900,
       endKilometer: 25000,
       gefahreneKm: 100,
@@ -191,7 +191,7 @@ async function main() {
   // Create a sample Zahlung
   await prisma.zahlung.create({
     data: {
-      fahrerId: fahrer1.id,
+      fahrerId: user3.id,
       fahrzeugId: fahrzeug1.id,
       betrag: 35.0,
       bestaetigung_fahrer: true,

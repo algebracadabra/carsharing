@@ -54,12 +54,11 @@ export default function BearbeitenFahrzeugPage() {
           foto: data.foto || '',
         });
 
-        // Check permissions
+        // Check permissions - nur Owner oder Admin
         const isOwner = data.halterId === userId;
         const isAdmin = userRole === 'ADMIN';
-        const isFahrer = userRole === 'FAHRER';
 
-        if (!isOwner && !isAdmin && !isFahrer) {
+        if (!isOwner && !isAdmin) {
           router.push(`/fahrzeuge/${id}`);
         }
       }
@@ -132,8 +131,6 @@ export default function BearbeitenFahrzeugPage() {
     );
   }
 
-  const isFahrer = userRole === 'FAHRER';
-
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Link
@@ -147,9 +144,7 @@ export default function BearbeitenFahrzeugPage() {
       <div className="bg-white rounded-lg shadow-md p-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Fahrzeug bearbeiten</h1>
         <p className="text-gray-600 mb-8">
-          {isFahrer
-            ? 'Als Fahrer können Sie den Schlüsselablageort und die Kilometerpauschale bearbeiten'
-            : 'Ändern Sie die Fahrzeugdetails'}
+          Ändern Sie die Fahrzeugdetails
         </p>
 
         {error && (
@@ -163,69 +158,65 @@ export default function BearbeitenFahrzeugPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {!isFahrer && (
-            <>
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Fahrzeugname *
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  aria-required="true"
-                />
-              </div>
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+              Fahrzeugname *
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-required="true"
+            />
+          </div>
 
-              <div>
-                <label htmlFor="foto" className="block text-sm font-medium text-gray-700 mb-2">
-                  Fahrzeugfoto
-                </label>
-                <div className="flex items-center gap-4">
-                  <label
-                    htmlFor="foto"
-                    className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                  >
-                    <Upload className="w-5 h-5 text-gray-600" aria-hidden="true" />
-                    <span className="text-sm font-medium text-gray-700">
-                      {uploading ? 'Wird hochgeladen...' : 'Neues Foto auswählen'}
-                    </span>
-                  </label>
-                  <input
-                    id="foto"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    disabled={uploading}
-                    className="hidden"
-                    aria-label="Fahrzeugfoto hochladen"
-                  />
-                  {formData.foto && (
-                    <span className="text-sm text-green-600">Foto vorhanden</span>
-                  )}
-                </div>
-              </div>
+          <div>
+            <label htmlFor="foto" className="block text-sm font-medium text-gray-700 mb-2">
+              Fahrzeugfoto
+            </label>
+            <div className="flex items-center gap-4">
+              <label
+                htmlFor="foto"
+                className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+              >
+                <Upload className="w-5 h-5 text-gray-600" aria-hidden="true" />
+                <span className="text-sm font-medium text-gray-700">
+                  {uploading ? 'Wird hochgeladen...' : 'Neues Foto auswählen'}
+                </span>
+              </label>
+              <input
+                id="foto"
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                className="hidden"
+                aria-label="Fahrzeugfoto hochladen"
+              />
+              {formData.foto && (
+                <span className="text-sm text-green-600">Foto vorhanden</span>
+              )}
+            </div>
+          </div>
 
-              <div>
-                <label htmlFor="kilometerstand" className="block text-sm font-medium text-gray-700 mb-2">
-                  Kilometerstand *
-                </label>
-                <input
-                  id="kilometerstand"
-                  type="number"
-                  value={formData.kilometerstand}
-                  onChange={(e) => setFormData({ ...formData, kilometerstand: e.target.value })}
-                  required
-                  min="0"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  aria-required="true"
-                />
-              </div>
-            </>
-          )}
+          <div>
+            <label htmlFor="kilometerstand" className="block text-sm font-medium text-gray-700 mb-2">
+              Kilometerstand *
+            </label>
+            <input
+              id="kilometerstand"
+              type="number"
+              value={formData.kilometerstand}
+              onChange={(e) => setFormData({ ...formData, kilometerstand: e.target.value })}
+              required
+              min="0"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-required="true"
+            />
+          </div>
 
           <div>
             <label htmlFor="kilometerpauschale" className="block text-sm font-medium text-gray-700 mb-2">
@@ -259,24 +250,22 @@ export default function BearbeitenFahrzeugPage() {
             />
           </div>
 
-          {!isFahrer && (
-            <div>
-              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
-                Fahrzeugstatus *
-              </label>
-              <select
-                id="status"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                aria-required="true"
-              >
-                <option value="VERFUEGBAR">Verfügbar</option>
-                <option value="IN_WARTUNG">In Wartung</option>
-                <option value="AUSSER_BETRIEB">Außer Betrieb</option>
-              </select>
-            </div>
-          )}
+          <div>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
+              Fahrzeugstatus *
+            </label>
+            <select
+              id="status"
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-required="true"
+            >
+              <option value="VERFUEGBAR">Verfügbar</option>
+              <option value="IN_WARTUNG">In Wartung</option>
+              <option value="AUSSER_BETRIEB">Außer Betrieb</option>
+            </select>
+          </div>
 
           <div className="flex gap-4 pt-4">
             <button

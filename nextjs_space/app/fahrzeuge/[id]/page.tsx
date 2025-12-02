@@ -135,7 +135,7 @@ export default function FahrzeugDetailPage() {
 
   const isOwner = fahrzeug?.halterId === userId;
   const isAdmin = userRole === 'ADMIN';
-  const canEdit = isOwner || isAdmin || userRole === 'FAHRER';
+  const canEdit = isOwner || isAdmin;
   const canDelete = isOwner || isAdmin;
 
   return (

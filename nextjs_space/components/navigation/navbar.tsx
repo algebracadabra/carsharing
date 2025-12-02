@@ -13,17 +13,14 @@ export function Navbar() {
 
   const userRole = (session?.user as any)?.role;
 
+  // Navigation für alle eingeloggten User sichtbar
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['ADMIN', 'HALTER', 'FAHRER'] },
-    { name: 'Fahrzeuge', href: '/fahrzeuge', icon: CarFront, roles: ['ADMIN', 'HALTER', 'FAHRER'] },
-    { name: 'Buchungen', href: '/buchungen', icon: Calendar, roles: ['ADMIN', 'HALTER', 'FAHRER'] },
-    { name: 'Fahrten', href: '/fahrten', icon: Route, roles: ['ADMIN', 'HALTER', 'FAHRER'] },
-    { name: 'Abrechnung', href: '/abrechnung', icon: Wallet, roles: ['ADMIN', 'HALTER', 'FAHRER'] },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Fahrzeuge', href: '/fahrzeuge', icon: CarFront },
+    { name: 'Buchungen', href: '/buchungen', icon: Calendar },
+    { name: 'Fahrten', href: '/fahrten', icon: Route },
+    { name: 'Abrechnung', href: '/abrechnung', icon: Wallet },
   ];
-
-  const filteredNavigation = navigation.filter(
-    (item) => !item?.roles || item?.roles?.includes?.(userRole)
-  );
 
   if (status === 'loading') {
     return null;
@@ -48,7 +45,7 @@ export function Navbar() {
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-              {filteredNavigation?.map?.((item) => {
+              {navigation?.map?.((item) => {
                 const Icon = item?.icon;
                 const isActive = pathname === item?.href;
                 return (
@@ -107,7 +104,7 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-gray-200 bg-white">
           <div className="px-4 py-4 space-y-1">
-            {filteredNavigation?.map?.((item) => {
+            {navigation?.map?.((item) => {
               const Icon = item?.icon;
               const isActive = pathname === item?.href;
               return (

@@ -9,8 +9,7 @@ datasource db {
 }
 
 enum UserRole {
-  HALTER
-  FAHRER
+  USER
   ADMIN
 }
 
@@ -41,7 +40,7 @@ model User {
   email         String    @unique
   name          String?
   password      String
-  role          UserRole  @default(FAHRER)
+  role          UserRole  @default(USER)
   emailVerified DateTime?
   image         String?
   createdAt     DateTime  @default(now())

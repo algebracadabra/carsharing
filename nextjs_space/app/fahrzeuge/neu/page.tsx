@@ -27,10 +27,7 @@ export default function NeuFahrzeugPage() {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-    if (status === 'authenticated' && userRole !== 'ADMIN' && userRole !== 'HALTER' && userRole !== 'FAHRER') {
-      router.push('/fahrzeuge');
-    }
-  }, [status, userRole, router]);
+  }, [status, router]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

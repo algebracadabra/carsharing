@@ -27,6 +27,7 @@ export default async function DashboardPage() {
   };
 
   if (userRole === 'ADMIN') {
+    // Admin sieht alles
     fahrzeuge = await prisma.fahrzeug.findMany({
       take: 5,
       include: { halter: true },
@@ -48,7 +49,6 @@ export default async function DashboardPage() {
       include: { fahrzeug: true, user: true },
       take: 5,
     });
-    // Admin sees all kilometer conflicts
     kilometerKonflikte = await prisma.fahrt.findMany({
       where: {
         kilometerKonflikt: true,
@@ -58,7 +58,8 @@ export default async function DashboardPage() {
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
-  } else if (userRole === 'HALTER') {
+  } else {
+    // USER sieht eigene Fahrzeuge + eigene Buchungen + Buchungen für eigene Fahrzeuge
     fahrzeuge = await prisma.fahrzeug.findMany({
       where: { halterId: userId },
       include: { halter: true },
@@ -66,7 +67,10 @@ export default async function DashboardPage() {
     });
     buchungen = await prisma.buchung.findMany({
       where: {
-        fahrzeug: { halterId: userId },
+        OR: [
+          { userId: userId },
+          { fahrzeug: { halterId: userId } },
+        ],
         status: { in: ['GEPLANT', 'LAUFEND'] },
       },
       include: { fahrzeug: true, user: true },
@@ -75,18 +79,26 @@ export default async function DashboardPage() {
     });
     stats.totalFahrzeuge = fahrzeuge.length;
     stats.totalBuchungen = await prisma.buchung.count({
-      where: { fahrzeug: { halterId: userId } },
+      where: {
+        OR: [
+          { userId: userId },
+          { fahrzeug: { halterId: userId } },
+        ],
+      },
     });
     offeneFahrten = await prisma.buchung.findMany({
       where: {
-        fahrzeug: { halterId: userId },
+        OR: [
+          { userId: userId },
+          { fahrzeug: { halterId: userId } },
+        ],
         status: 'ABGESCHLOSSEN',
         fahrt: null,
       },
       include: { fahrzeug: true, user: true },
       take: 5,
     });
-    // HALTER sees kilometer conflicts on their own vehicles
+    // User sieht Kilometer-Konflikte auf eigenen Fahrzeugen
     kilometerKonflikte = await prisma.fahrt.findMany({
       where: {
         fahrzeug: { halterId: userId },
@@ -96,26 +108,6 @@ export default async function DashboardPage() {
       include: { fahrzeug: true, fahrer: true, buchung: true },
       orderBy: { createdAt: 'desc' },
       take: 10,
-    });
-  } else {
-    // FAHRER
-    buchungen = await prisma.buchung.findMany({
-      where: {
-        userId: userId,
-        status: { in: ['GEPLANT', 'LAUFEND'] },
-      },
-      include: { fahrzeug: true, user: true },
-      orderBy: { startZeit: 'asc' },
-    });
-    stats.totalBuchungen = await prisma.buchung.count({ where: { userId } });
-    offeneFahrten = await prisma.buchung.findMany({
-      where: {
-        userId: userId,
-        status: 'ABGESCHLOSSEN',
-        fahrt: null,
-      },
-      include: { fahrzeug: true, user: true },
-      take: 5,
     });
   }
 
@@ -134,27 +126,25 @@ export default async function DashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {(userRole === 'ADMIN' || userRole === 'HALTER') && (
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Fahrzeuge</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.totalFahrzeuge}
-                </p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Car className="w-8 h-8 text-blue-600" aria-hidden="true" />
-              </div>
+        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Meine Fahrzeuge</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">
+                {stats.totalFahrzeuge}
+              </p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <Car className="w-8 h-8 text-blue-600" aria-hidden="true" />
             </div>
           </div>
-        )}
+        </div>
 
         <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">
-                {userRole === 'FAHRER' ? 'Meine Buchungen' : 'Buchungen'}
+                Buchungen
               </p>
               <p className="text-3xl font-bold text-gray-900 mt-2">
                 {stats.totalBuchungen}
@@ -182,8 +172,8 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Fahrzeuge (only for HALTER and ADMIN) */}
-        {(userRole === 'ADMIN' || userRole === 'HALTER') && fahrzeuge.length > 0 && (
+        {/* Meine Fahrzeuge */}
+        {fahrzeuge.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">Meine Fahrzeuge</h2>
@@ -327,8 +317,8 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Issues - Kilometer Konflikte (nur für HALTER und ADMIN) */}
-        {(userRole === 'ADMIN' || userRole === 'HALTER') && kilometerKonflikte.length > 0 && (
+        {/* Issues - Kilometer Konflikte */}
+        {kilometerKonflikte.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-6 lg:col-span-2 border-l-4 border-red-500">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">

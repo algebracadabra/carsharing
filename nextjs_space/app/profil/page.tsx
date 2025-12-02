@@ -191,9 +191,7 @@ export default function ProfilPage() {
                 value={
                   userRole === 'ADMIN'
                     ? 'Administrator'
-                    : userRole === 'HALTER'
-                    ? 'Halter'
-                    : 'Fahrer'
+                    : 'Benutzer'
                 }
                 disabled
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"

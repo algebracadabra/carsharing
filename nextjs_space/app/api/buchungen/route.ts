@@ -18,19 +18,20 @@ export async function GET(request: Request) {
     let buchungen;
 
     if (userRole === 'ADMIN') {
+      // Admin sieht alle Buchungen
       buchungen = await prisma.buchung.findMany({
-        include: { fahrzeug: true, user: true, fahrt: true },
-        orderBy: { startZeit: 'desc' },
-      });
-    } else if (userRole === 'HALTER') {
-      buchungen = await prisma.buchung.findMany({
-        where: { fahrzeug: { halterId: userId } },
         include: { fahrzeug: true, user: true, fahrt: true },
         orderBy: { startZeit: 'desc' },
       });
     } else {
+      // User sieht eigene Buchungen + Buchungen für eigene Fahrzeuge
       buchungen = await prisma.buchung.findMany({
-        where: { userId },
+        where: {
+          OR: [
+            { userId },
+            { fahrzeug: { halterId: userId } },
+          ],
+        },
         include: { fahrzeug: true, user: true, fahrt: true },
         orderBy: { startZeit: 'desc' },
       });
