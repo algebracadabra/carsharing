@@ -91,16 +91,19 @@ model VerificationToken {
 }
 
 model Fahrzeug {
-  id                   String         @id @default(cuid())
-  name                 String
-  foto                 String?
-  kilometerstand       Int
-  kilometerpauschale   Float
-  halterId             String
-  schluesselablageort  String
-  status               FahrzeugStatus @default(VERFUEGBAR)
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  id                      String         @id @default(cuid())
+  name                    String
+  foto                    String?
+  kilometerstand          Int
+  kilometerpauschale      Float
+  treibstoffKosten        Float          @default(0)
+  fixkosten               Float          @default(0)
+  wartungsReparaturKosten Float          @default(0)
+  halterId                String
+  schluesselablageort     String
+  status                  FahrzeugStatus @default(VERFUEGBAR)
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
 
   halter     User       @relation("FahrzeugHalter", fields: [halterId], references: [id], onDelete: Cascade)
   buchungen  Buchung[]

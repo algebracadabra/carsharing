@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check } from 'lucide-react';
 import { getFileUrl } from '@/lib/s3';
 
 export default function FahrzeugDetailPage() {
@@ -18,6 +18,13 @@ export default function FahrzeugDetailPage() {
   const [loading, setLoading] = useState(true);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editingCosts, setEditingCosts] = useState(false);
+  const [savingCosts, setSavingCosts] = useState(false);
+  const [costFormData, setCostFormData] = useState({
+    treibstoffKosten: '0',
+    fixkosten: '0',
+    wartungsReparaturKosten: '0',
+  });
 
   const userRole = (session?.user as any)?.role;
   const userId = (session?.user as any)?.id;
@@ -41,6 +48,12 @@ export default function FahrzeugDetailPage() {
         const data = await response.json();
         setFahrzeug(data);
         
+        setCostFormData({
+          treibstoffKosten: (data.treibstoffKosten ?? 0).toString(),
+          fixkosten: (data.fixkosten ?? 0).toString(),
+          wartungsReparaturKosten: (data.wartungsReparaturKosten ?? 0).toString(),
+        });
+        
         if (data?.foto) {
           try {
             const url = await getFileUrl(data.foto);
@@ -54,6 +67,34 @@ export default function FahrzeugDetailPage() {
       console.error('Error fetching fahrzeug:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveCosts = async () => {
+    setSavingCosts(true);
+    try {
+      const response = await fetch(`/api/fahrzeuge/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          treibstoffKosten: costFormData.treibstoffKosten,
+          fixkosten: costFormData.fixkosten,
+          wartungsReparaturKosten: costFormData.wartungsReparaturKosten,
+        }),
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        setFahrzeug((prev: any) => ({ ...prev, ...updated }));
+        setEditingCosts(false);
+      } else {
+        alert('Fehler beim Speichern');
+      }
+    } catch (error) {
+      console.error('Error saving costs:', error);
+      alert('Fehler beim Speichern');
+    } finally {
+      setSavingCosts(false);
     }
   };
 
@@ -207,6 +248,144 @@ export default function FahrzeugDetailPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Kosten Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <PiggyBank className="w-5 h-5 text-gray-700" aria-hidden="true" />
+            <h2 className="text-xl font-bold text-gray-900">Kostenübersicht</h2>
+          </div>
+          {(isOwner || isAdmin) && !editingCosts && (
+            <button
+              onClick={() => setEditingCosts(true)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Kosten bearbeiten"
+            >
+              <Edit className="w-5 h-5 text-gray-600" aria-hidden="true" />
+            </button>
+          )}
+          {editingCosts && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSaveCosts}
+                disabled={savingCosts}
+                className="p-2 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-50"
+                aria-label="Speichern"
+              >
+                <Check className="w-5 h-5 text-green-600" aria-hidden="true" />
+              </button>
+              <button
+                onClick={() => {
+                  setEditingCosts(false);
+                  setCostFormData({
+                    treibstoffKosten: (fahrzeug?.treibstoffKosten ?? 0).toString(),
+                    fixkosten: (fahrzeug?.fixkosten ?? 0).toString(),
+                    wartungsReparaturKosten: (fahrzeug?.wartungsReparaturKosten ?? 0).toString(),
+                  });
+                }}
+                className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                aria-label="Abbrechen"
+              >
+                <X className="w-5 h-5 text-red-600" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {editingCosts ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-orange-50 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Fuel className="w-5 h-5 text-orange-600" aria-hidden="true" />
+                <label htmlFor="treibstoffKosten" className="font-semibold text-gray-900">Treibstoffkosten</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="treibstoffKosten"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={costFormData.treibstoffKosten}
+                  onChange={(e) => setCostFormData({ ...costFormData, treibstoffKosten: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-bold"
+                />
+                <span className="text-lg font-bold text-orange-600">€</span>
+              </div>
+            </div>
+
+            <div className="bg-indigo-50 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <PiggyBank className="w-5 h-5 text-indigo-600" aria-hidden="true" />
+                <label htmlFor="fixkosten" className="font-semibold text-gray-900">Fixkosten</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="fixkosten"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={costFormData.fixkosten}
+                  onChange={(e) => setCostFormData({ ...costFormData, fixkosten: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg font-bold"
+                />
+                <span className="text-lg font-bold text-indigo-600">€</span>
+              </div>
+            </div>
+
+            <div className="bg-rose-50 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Wrench className="w-5 h-5 text-rose-600" aria-hidden="true" />
+                <label htmlFor="wartungsReparaturKosten" className="font-semibold text-gray-900">Wartung & Reparatur</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="wartungsReparaturKosten"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={costFormData.wartungsReparaturKosten}
+                  onChange={(e) => setCostFormData({ ...costFormData, wartungsReparaturKosten: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-lg font-bold"
+                />
+                <span className="text-lg font-bold text-rose-600">€</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-orange-50 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Fuel className="w-5 h-5 text-orange-600" aria-hidden="true" />
+                <h3 className="font-semibold text-gray-900">Treibstoffkosten</h3>
+              </div>
+              <p className="text-2xl font-bold text-orange-600">
+                {fahrzeug?.treibstoffKosten?.toFixed?.(2) ?? '0.00'} €
+              </p>
+            </div>
+
+            <div className="bg-indigo-50 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <PiggyBank className="w-5 h-5 text-indigo-600" aria-hidden="true" />
+                <h3 className="font-semibold text-gray-900">Fixkosten</h3>
+              </div>
+              <p className="text-2xl font-bold text-indigo-600">
+                {fahrzeug?.fixkosten?.toFixed?.(2) ?? '0.00'} €
+              </p>
+            </div>
+
+            <div className="bg-rose-50 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Wrench className="w-5 h-5 text-rose-600" aria-hidden="true" />
+                <h3 className="font-semibold text-gray-900">Wartung & Reparatur</h3>
+              </div>
+              <p className="text-2xl font-bold text-rose-600">
+                {fahrzeug?.wartungsReparaturKosten?.toFixed?.(2) ?? '0.00'} €
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Buchungen Section */}

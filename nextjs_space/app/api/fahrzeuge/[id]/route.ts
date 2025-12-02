@@ -98,6 +98,15 @@ export async function PATCH(
           : undefined,
         schluesselablageort: body.schluesselablageort,
         status: body.status,
+        treibstoffKosten: body.treibstoffKosten !== undefined
+          ? parseFloat(body.treibstoffKosten)
+          : undefined,
+        fixkosten: body.fixkosten !== undefined
+          ? parseFloat(body.fixkosten)
+          : undefined,
+        wartungsReparaturKosten: body.wartungsReparaturKosten !== undefined
+          ? parseFloat(body.wartungsReparaturKosten)
+          : undefined,
       };
       // Remove undefined values
       Object.keys(updateData).forEach(
