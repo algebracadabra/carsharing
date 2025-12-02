@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
-import { uploadFile } from '@/lib/s3';
+import { put } from '@vercel/blob';
 
 export async function POST(request: Request) {
   try {
@@ -18,11 +18,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Keine Datei hochgeladen' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-    const s3Key = await uploadFile(buffer, fileName);
+    const fileName = `fahrzeuge/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    
+    const blob = await put(fileName, file, {
+      access: 'public',
+    });
 
-    return NextResponse.json({ key: s3Key }, { status: 200 });
+    // Return the URL directly - Vercel Blob URLs are public and permanent
+    return NextResponse.json({ key: blob.url, url: blob.url }, { status: 200 });
   } catch (error: any) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Upload fehlgeschlagen' }, { status: 500 });

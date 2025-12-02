@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check } from 'lucide-react';
-import { getFileUrl } from '@/lib/s3';
 
 export default function FahrzeugDetailPage() {
   const { data: session, status } = useSession() || {};
@@ -54,13 +53,9 @@ export default function FahrzeugDetailPage() {
           wartungsReparaturKostenIncrement: '',
         });
         
+        // Vercel Blob URLs are public - use directly
         if (data?.foto) {
-          try {
-            const url = await getFileUrl(data.foto);
-            setFotoUrl(url);
-          } catch (err) {
-            console.error('Error getting foto URL:', err);
-          }
+          setFotoUrl(data.foto);
         }
       }
     } catch (error) {

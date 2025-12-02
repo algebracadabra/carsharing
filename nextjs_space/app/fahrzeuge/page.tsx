@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Car, Plus, MapPin, TrendingUp, Settings } from 'lucide-react';
-import { getFileUrl } from '@/lib/s3';
 
 interface Fahrzeug {
   id: string;
@@ -49,16 +48,11 @@ export default function FahrzeugePage() {
         const data = await response.json();
         setFahrzeuge(data ?? []);
         
-        // Fetch signed URLs for fotos
+        // Set foto URLs directly - Vercel Blob URLs are public
         const urls: { [key: string]: string } = {};
         for (const f of data ?? []) {
           if (f?.foto) {
-            try {
-              const url = await getFileUrl(f.foto);
-              urls[f.id] = url;
-            } catch (err) {
-              console.error('Error getting foto URL:', err);
-            }
+            urls[f.id] = f.foto;
           }
         }
         setFotoUrls(urls);
@@ -85,7 +79,7 @@ export default function FahrzeugePage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Fahrzeuge</h1>
           <p className="text-gray-600">Verwalten Sie alle verfügbaren Fahrzeuge</p>
         </div>
-        {(userRole === 'ADMIN' || userRole === 'HALTER') && (
+        {(userRole === 'ADMIN' || userRole === 'HALTER' || userRole === 'FAHRER') && (
           <Link
             href="/fahrzeuge/neu"
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
@@ -106,11 +100,11 @@ export default function FahrzeugePage() {
             Noch keine Fahrzeuge vorhanden
           </h3>
           <p className="text-gray-600 mb-4">
-            {userRole === 'HALTER' || userRole === 'ADMIN'
+            {userRole === 'HALTER' || userRole === 'ADMIN' || userRole === 'FAHRER'
               ? 'Fügen Sie Ihr erstes Fahrzeug hinzu'
               : 'Es sind noch keine Fahrzeuge verfügbar'}
           </p>
-          {(userRole === 'ADMIN' || userRole === 'HALTER') && (
+          {(userRole === 'ADMIN' || userRole === 'HALTER' || userRole === 'FAHRER') && (
             <Link
               href="/fahrzeuge/neu"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"

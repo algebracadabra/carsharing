@@ -27,7 +27,7 @@ export default function NeuFahrzeugPage() {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-    if (status === 'authenticated' && userRole !== 'ADMIN' && userRole !== 'HALTER') {
+    if (status === 'authenticated' && userRole !== 'ADMIN' && userRole !== 'HALTER' && userRole !== 'FAHRER') {
       router.push('/fahrzeuge');
     }
   }, [status, userRole, router]);

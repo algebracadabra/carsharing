@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     const userRole = (session.user as any)?.role;
     const userId = (session.user as any)?.id;
 
-    if (userRole !== 'ADMIN' && userRole !== 'HALTER') {
+    if (userRole !== 'ADMIN' && userRole !== 'HALTER' && userRole !== 'FAHRER') {
       return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 });
     }
 
@@ -82,6 +82,14 @@ export async function POST(request: Request) {
       },
       include: { halter: true },
     });
+
+    // Wenn ein FAHRER ein Fahrzeug erstellt, wird er automatisch zum HALTER
+    if (userRole === 'FAHRER') {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'HALTER' },
+      });
+    }
 
     return NextResponse.json(fahrzeug, { status: 201 });
   } catch (error: any) {
