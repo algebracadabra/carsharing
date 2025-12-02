@@ -71,6 +71,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Buchung nicht gefunden' }, { status: 404 });
     }
 
+    // Prevent creating trips from cancelled bookings
+    if (buchung.status === 'STORNIERT') {
+      return NextResponse.json({ error: 'Stornierte Buchungen können keine Fahrten haben' }, { status: 400 });
+    }
+
     const start = parseInt(startKilometer);
     const end = parseInt(endKilometer);
     const gefahreneKm = end - start;

@@ -87,9 +87,7 @@ export default function BuchungenPage() {
 
     try {
       await fetch(`/api/buchungen/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'STORNIERT' }),
+        method: 'DELETE',
       });
       fetchData();
     } catch (error) {
