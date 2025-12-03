@@ -35,6 +35,14 @@ enum ZahlungStatus {
   BESTAETIGT
 }
 
+enum ZahlungsArt {
+  BAR
+  TANKEN
+  PFLEGE
+  WARTUNG
+  REPARATUR
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -150,6 +158,8 @@ model Zahlung {
   fahrerId              String
   fahrzeugId            String
   betrag                Float
+  zahlungsart           ZahlungsArt    @default(BAR)
+  beleg                 String?
   bestaetigung_fahrer   Boolean        @default(false)
   bestaetigung_halter   Boolean        @default(false)
   status                ZahlungStatus  @default(AUSSTEHEND)

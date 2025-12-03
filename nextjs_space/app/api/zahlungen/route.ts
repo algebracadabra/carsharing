@@ -51,8 +51,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
     }
 
+    const userId = (session.user as any)?.id;
+    const userRole = (session.user as any)?.role;
+
     const body = await request.json();
-    const { fahrerId, fahrzeugId, betrag, beschreibung } = body;
+    const { fahrerId, fahrzeugId, betrag, beschreibung, zahlungsart, beleg } = body;
 
     if (!fahrerId || !fahrzeugId || betrag === undefined) {
       return NextResponse.json(
@@ -61,11 +64,38 @@ export async function POST(request: Request) {
       );
     }
 
+    // Prüfen ob User berechtigt ist (Admin, Halter des Fahrzeugs, oder Fahrer mit Fahrten)
+    if (userRole !== 'ADMIN') {
+      const fahrzeug = await prisma.fahrzeug.findUnique({
+        where: { id: fahrzeugId },
+        select: { halterId: true },
+      });
+
+      const hatFahrten = await prisma.fahrt.findFirst({
+        where: {
+          fahrzeugId,
+          fahrerId: userId,
+        },
+      });
+
+      const istHalter = fahrzeug?.halterId === userId;
+      const istFahrerMitFahrten = !!hatFahrten;
+
+      if (!istHalter && !istFahrerMitFahrten) {
+        return NextResponse.json(
+          { error: 'Nur Fahrer oder Halter des Fahrzeugs können Zahlungen erfassen' },
+          { status: 403 }
+        );
+      }
+    }
+
     const zahlung = await prisma.zahlung.create({
       data: {
         fahrerId,
         fahrzeugId,
         betrag: parseFloat(betrag),
+        zahlungsart: zahlungsart || 'BAR',
+        beleg: beleg || null,
         beschreibung,
         bestaetigung_fahrer: false,
         bestaetigung_halter: false,
