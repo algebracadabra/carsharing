@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Calendar, Plus, Car, User, Clock, X, AlertCircle } from 'lucide-react';
+import { Calendar, Plus, Car, User, Clock, X, AlertCircle, ChevronDown } from 'lucide-react';
 
 export default function BuchungenPage() {
   const { data: session, status } = useSession() || {};
@@ -14,11 +14,14 @@ export default function BuchungenPage() {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     fahrzeugId: '',
-    startZeit: '',
-    endZeit: '',
+    startDatum: '',
+    startStunde: '8',
+    endDatum: '',
+    endStunde: '17',
   });
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showAbgeschlossen, setShowAbgeschlossen] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -61,10 +64,23 @@ export default function BuchungenPage() {
     setCreating(true);
 
     try {
+      // Construct datetime from date + hour
+      const startZeit = new Date(`${formData.startDatum}T${formData.startStunde.padStart(2, '0')}:00:00`);
+      const endZeit = new Date(`${formData.endDatum}T${formData.endStunde.padStart(2, '0')}:00:00`);
+
+      // Validate: end must be after start
+      if (endZeit <= startZeit) {
+        throw new Error('Endzeit muss nach der Startzeit liegen');
+      }
+
       const response = await fetch('/api/buchungen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          fahrzeugId: formData.fahrzeugId,
+          startZeit: startZeit.toISOString(),
+          endZeit: endZeit.toISOString(),
+        }),
       });
 
       if (!response.ok) {
@@ -73,7 +89,7 @@ export default function BuchungenPage() {
       }
 
       setShowModal(false);
-      setFormData({ fahrzeugId: '', startZeit: '', endZeit: '' });
+      setFormData({ fahrzeugId: '', startDatum: '', startStunde: '8', endDatum: '', endStunde: '17' });
       fetchData();
     } catch (err: any) {
       setError(err.message);
@@ -120,93 +136,142 @@ export default function BuchungenPage() {
         </button>
       </div>
 
-      {buchungen.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" aria-hidden="true" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Keine Buchungen vorhanden
-          </h3>
-          <p className="text-gray-600">Erstellen Sie Ihre erste Buchung</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {buchungen?.map?.((buchung: any) => (
-            <div
-              key={buchung?.id}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="bg-blue-100 p-2 rounded-lg">
-                      <Car className="w-5 h-5 text-blue-600" aria-hidden="true" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        {buchung?.fahrzeug?.name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Gebucht von: {buchung?.user?.name}
-                      </p>
-                    </div>
+      {(() => {
+        const offeneBuchungen = buchungen?.filter?.((b: any) => b?.status === 'GEPLANT' || b?.status === 'LAUFEND') ?? [];
+        const abgeschlosseneBuchungen = buchungen?.filter?.((b: any) => b?.status === 'ABGESCHLOSSEN' || b?.status === 'STORNIERT') ?? [];
+
+        const renderBuchung = (buchung: any) => (
+          <div
+            key={buchung?.id}
+            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <Car className="w-5 h-5 text-blue-600" aria-hidden="true" />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Clock className="w-4 h-4" aria-hidden="true" />
-                      <span>
-                        Start: {new Date(buchung?.startZeit)?.toLocaleDateString?.('de-DE') ?? ''}{' '}
-                        {new Date(buchung?.startZeit)?.toLocaleTimeString?.('de-DE', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        }) ?? ''}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Clock className="w-4 h-4" aria-hidden="true" />
-                      <span>
-                        Ende: {new Date(buchung?.endZeit)?.toLocaleDateString?.('de-DE') ?? ''}{' '}
-                        {new Date(buchung?.endZeit)?.toLocaleTimeString?.('de-DE', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        }) ?? ''}
-                      </span>
-                    </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {buchung?.fahrzeug?.name}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Gebucht von: {buchung?.user?.name}
+                    </p>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span
-                    className={`text-xs font-medium px-3 py-1 rounded-full ${
-                      buchung?.status === 'GEPLANT'
-                        ? 'bg-blue-100 text-blue-700'
-                        : buchung?.status === 'LAUFEND'
-                        ? 'bg-purple-100 text-purple-700'
-                        : buchung?.status === 'ABGESCHLOSSEN'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    {buchung?.status === 'GEPLANT'
-                      ? 'Geplant'
-                      : buchung?.status === 'LAUFEND'
-                      ? 'Laufend'
-                      : buchung?.status === 'ABGESCHLOSSEN'
-                      ? 'Abgeschlossen'
-                      : 'Storniert'}
-                  </span>
-                  {buchung?.status === 'GEPLANT' && (
-                    <button
-                      onClick={() => handleStornieren(buchung?.id)}
-                      className="text-sm text-red-600 hover:text-red-700 font-medium"
-                    >
-                      Stornieren
-                    </button>
-                  )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Clock className="w-4 h-4" aria-hidden="true" />
+                    <span>
+                      Start: {new Date(buchung?.startZeit)?.toLocaleDateString?.('de-DE') ?? ''}{' '}
+                      {new Date(buchung?.startZeit)?.toLocaleTimeString?.('de-DE', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }) ?? ''}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Clock className="w-4 h-4" aria-hidden="true" />
+                    <span>
+                      Ende: {new Date(buchung?.endZeit)?.toLocaleDateString?.('de-DE') ?? ''}{' '}
+                      {new Date(buchung?.endZeit)?.toLocaleTimeString?.('de-DE', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }) ?? ''}
+                    </span>
+                  </div>
                 </div>
               </div>
+              <div className="flex flex-col items-end gap-2">
+                <span
+                  className={`text-xs font-medium px-3 py-1 rounded-full ${
+                    buchung?.status === 'GEPLANT'
+                      ? 'bg-blue-100 text-blue-700'
+                      : buchung?.status === 'LAUFEND'
+                      ? 'bg-purple-100 text-purple-700'
+                      : buchung?.status === 'ABGESCHLOSSEN'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-red-100 text-red-700'
+                  }`}
+                >
+                  {buchung?.status === 'GEPLANT'
+                    ? 'Geplant'
+                    : buchung?.status === 'LAUFEND'
+                    ? 'Laufend'
+                    : buchung?.status === 'ABGESCHLOSSEN'
+                    ? 'Abgeschlossen'
+                    : 'Storniert'}
+                </span>
+                {buchung?.status === 'GEPLANT' && (
+                  <button
+                    onClick={() => handleStornieren(buchung?.id)}
+                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                  >
+                    Stornieren
+                  </button>
+                )}
+              </div>
             </div>
-          )) ?? null}
-        </div>
-      )}
+          </div>
+        );
+
+        if (buchungen.length === 0) {
+          return (
+            <div className="bg-white rounded-lg shadow-md p-12 text-center">
+              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Keine Buchungen vorhanden
+              </h3>
+              <p className="text-gray-600">Erstellen Sie Ihre erste Buchung</p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-6">
+            {/* Offene Buchungen */}
+            {offeneBuchungen.length > 0 && (
+              <div className="space-y-4">
+                {offeneBuchungen.map(renderBuchung)}
+              </div>
+            )}
+
+            {offeneBuchungen.length === 0 && abgeschlosseneBuchungen.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" aria-hidden="true" />
+                <p className="text-gray-600">Keine offenen Buchungen</p>
+              </div>
+            )}
+
+            {/* Abgeschlossene Buchungen Accordion */}
+            {abgeschlosseneBuchungen.length > 0 && (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setShowAbgeschlossen(!showAbgeschlossen)}
+                  className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  aria-expanded={showAbgeschlossen}
+                >
+                  <span className="font-semibold text-gray-700">
+                    Abgeschlossene Buchungen ({abgeschlosseneBuchungen.length})
+                  </span>
+                  <ChevronDown
+                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+                      showAbgeschlossen ? 'rotate-180' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+                {showAbgeschlossen && (
+                  <div className="p-4 space-y-4 bg-gray-50/50">
+                    {abgeschlosseneBuchungen.map(renderBuchung)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Modal */}
       {showModal && (
@@ -256,33 +321,61 @@ export default function BuchungenPage() {
               </div>
 
               <div>
-                <label htmlFor="startZeit" className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Startzeit *
                 </label>
-                <input
-                  id="startZeit"
-                  type="datetime-local"
-                  value={formData.startZeit}
-                  onChange={(e) => setFormData({ ...formData, startZeit: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  aria-required="true"
-                />
+                <div className="flex gap-2">
+                  <input
+                    id="startDatum"
+                    type="date"
+                    value={formData.startDatum}
+                    onChange={(e) => setFormData({ ...formData, startDatum: e.target.value })}
+                    required
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    aria-required="true"
+                  />
+                  <select
+                    id="startStunde"
+                    value={formData.startStunde}
+                    onChange={(e) => setFormData({ ...formData, startStunde: e.target.value })}
+                    required
+                    className="w-24 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    aria-label="Startstunde"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label htmlFor="endZeit" className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Endzeit *
                 </label>
-                <input
-                  id="endZeit"
-                  type="datetime-local"
-                  value={formData.endZeit}
-                  onChange={(e) => setFormData({ ...formData, endZeit: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  aria-required="true"
-                />
+                <div className="flex gap-2">
+                  <input
+                    id="endDatum"
+                    type="date"
+                    value={formData.endDatum}
+                    onChange={(e) => setFormData({ ...formData, endDatum: e.target.value })}
+                    required
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    aria-required="true"
+                  />
+                  <select
+                    id="endStunde"
+                    value={formData.endStunde}
+                    onChange={(e) => setFormData({ ...formData, endStunde: e.target.value })}
+                    required
+                    className="w-24 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    aria-label="Endstunde"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">

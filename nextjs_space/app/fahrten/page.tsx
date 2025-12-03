@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Route, Plus, Car, AlertCircle, X, Edit, Play, CheckCircle, Clock } from 'lucide-react';
+import { Route, Plus, Car, AlertCircle, X, Edit, Play, CheckCircle, Clock, ChevronDown } from 'lucide-react';
 import { formatNumber, formatCurrency } from '@/lib/utils';
 
 export default function FahrtenPage() {
@@ -34,6 +34,7 @@ export default function FahrtenPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [konfliktWarnung, setKonfliktWarnung] = useState<any>(null);
+  const [showAbgeschlossen, setShowAbgeschlossen] = useState(false);
 
   // Helper function to calculate expected kilometer reading from previous trip
   const getExpectedKilometer = (currentFahrt: any) => {
@@ -399,97 +400,113 @@ export default function FahrtenPage() {
         </div>
       )}
 
-      {/* Abgeschlossene Fahrten */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Abgeschlossene Fahrten</h2>
-        {abgeschlosseneFahrten.length === 0 ? (
-          <div className="text-center py-12">
-            <Route className="w-16 h-16 text-gray-400 mx-auto mb-4" aria-hidden="true" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Keine abgeschlossenen Fahrten
-            </h3>
-            <p className="text-gray-600">Starten Sie Ihre erste Fahrt</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {abgeschlosseneFahrten.map((fahrt: any) => (
-              <div
-                key={fahrt.id}
-                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Car className="w-5 h-5 text-blue-600" aria-hidden="true" />
-                      <h3 className="font-bold text-gray-900">{fahrt.fahrzeug?.name}</h3>
-                      {fahrt.fahrerId === (session?.user as any)?.id && (
-                        <button
-                          onClick={() => handleOpenEditModal(fahrt)}
-                          className="ml-2 p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Fahrt bearbeiten"
-                        >
-                          <Edit className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600">
-                      <div>
-                        <span className="font-medium">Fahrer:</span> {fahrt.fahrer?.name}
+      {/* Abgeschlossene Fahrten - Accordion */}
+      {abgeschlosseneFahrten.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <Route className="w-16 h-16 text-gray-400 mx-auto mb-4" aria-hidden="true" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Keine abgeschlossenen Fahrten
+          </h3>
+          <p className="text-gray-600">Starten Sie Ihre erste Fahrt</p>
+        </div>
+      ) : (
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowAbgeschlossen(!showAbgeschlossen)}
+            className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+            aria-expanded={showAbgeschlossen}
+          >
+            <span className="font-semibold text-gray-700">
+              Abgeschlossene Fahrten ({abgeschlosseneFahrten.length})
+            </span>
+            <ChevronDown
+              className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+                showAbgeschlossen ? 'rotate-180' : ''
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+          {showAbgeschlossen && (
+            <div className="p-4 space-y-4 bg-gray-50/50">
+              {abgeschlosseneFahrten.map((fahrt: any) => (
+                <div
+                  key={fahrt.id}
+                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Car className="w-5 h-5 text-blue-600" aria-hidden="true" />
+                        <h3 className="font-bold text-gray-900">{fahrt.fahrzeug?.name}</h3>
+                        {fahrt.fahrerId === (session?.user as any)?.id && (
+                          <button
+                            onClick={() => handleOpenEditModal(fahrt)}
+                            className="ml-2 p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Fahrt bearbeiten"
+                          >
+                            <Edit className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                        )}
                       </div>
-                      <div>
-                        <span className="font-medium">Strecke:</span> {formatNumber(fahrt.startKilometer)} - {formatNumber(fahrt.endKilometer)} km
-                      </div>
-                      <div>
-                        <span className="font-medium">Gefahren:</span> {formatNumber(fahrt.gefahreneKm)} km
-                      </div>
-                    </div>
-                    {fahrt.bemerkungen && (
-                      <div className="text-sm text-gray-500 mt-2 italic">
-                        "{fahrt.bemerkungen}"
-                      </div>
-                    )}
-                    <div className="text-sm text-gray-500 mt-2">
-                      {new Date(fahrt.createdAt).toLocaleDateString('de-DE')}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-blue-600">
-                      {formatCurrency(fahrt.kosten)} €
-                    </p>
-                    {(() => {
-                      const konfliktDetails = getKonfliktDetails(fahrt);
-                      if (!konfliktDetails) return null;
-                      
-                      return (
-                        <div className="text-xs text-orange-600 font-medium mt-1">
-                          <div className="mb-1">Kilometerkonflikt</div>
-                          {konfliktDetails.expected !== null ? (
-                            <>
-                              <div className="text-xs text-orange-500">
-                                Erwartet: {formatNumber(konfliktDetails.expected)} km
-                              </div>
-                              <div className="text-xs text-orange-500">
-                                Eingegeben: {formatNumber(konfliktDetails.actual)} km
-                              </div>
-                              <div className="text-xs text-orange-500">
-                                Differenz: {formatNumber(konfliktDetails.difference)} km {konfliktDetails.type}
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-xs text-orange-500">
-                              Startkilometer weicht vom Fahrzeugstand ab
-                            </div>
-                          )}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600">
+                        <div>
+                          <span className="font-medium">Fahrer:</span> {fahrt.fahrer?.name}
                         </div>
-                      );
-                    })()}
+                        <div>
+                          <span className="font-medium">Strecke:</span> {formatNumber(fahrt.startKilometer)} - {formatNumber(fahrt.endKilometer)} km
+                        </div>
+                        <div>
+                          <span className="font-medium">Gefahren:</span> {formatNumber(fahrt.gefahreneKm)} km
+                        </div>
+                      </div>
+                      {fahrt.bemerkungen && (
+                        <div className="text-sm text-gray-500 mt-2 italic">
+                          "{fahrt.bemerkungen}"
+                        </div>
+                      )}
+                      <div className="text-sm text-gray-500 mt-2">
+                        {new Date(fahrt.createdAt).toLocaleDateString('de-DE')}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-blue-600">
+                        {formatCurrency(fahrt.kosten)} €
+                      </p>
+                      {(() => {
+                        const konfliktDetails = getKonfliktDetails(fahrt);
+                        if (!konfliktDetails) return null;
+                        
+                        return (
+                          <div className="text-xs text-orange-600 font-medium mt-1">
+                            <div className="mb-1">Kilometerkonflikt</div>
+                            {konfliktDetails.expected !== null ? (
+                              <>
+                                <div className="text-xs text-orange-500">
+                                  Erwartet: {formatNumber(konfliktDetails.expected)} km
+                                </div>
+                                <div className="text-xs text-orange-500">
+                                  Eingegeben: {formatNumber(konfliktDetails.actual)} km
+                                </div>
+                                <div className="text-xs text-orange-500">
+                                  Differenz: {formatNumber(konfliktDetails.difference)} km {konfliktDetails.type}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-xs text-orange-500">
+                                Startkilometer weicht vom Fahrzeugstand ab
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* === MODAL: FAHRT STARTEN === */}
       {showStartModal && (

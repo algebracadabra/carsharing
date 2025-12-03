@@ -62,6 +62,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate: end must be after start
+    const start = new Date(startZeit);
+    const end = new Date(endZeit);
+    if (end <= start) {
+      return NextResponse.json(
+        { error: 'Endzeit muss nach der Startzeit liegen' },
+        { status: 400 }
+      );
+    }
+
     // Check for overlapping bookings
     const overlapping = await prisma.buchung.findFirst({
       where: {
