@@ -12,3 +12,15 @@ export function formatDuration(seconds: number): string {
 
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
 }
+
+// Formatiert Zahlen mit Tausenderpunkten (deutsches Format)
+export function formatNumber(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '0';
+  return value.toLocaleString('de-DE');
+}
+
+// Formatiert Währungsbeträge (2 Dezimalstellen, deutsches Format)
+export function formatCurrency(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '0,00';
+  return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}

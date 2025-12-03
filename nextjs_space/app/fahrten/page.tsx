@@ -3,35 +3,44 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Route, Plus, Car, AlertCircle, X, Edit } from 'lucide-react';
+import { Route, Plus, Car, AlertCircle, X, Edit, Play, CheckCircle, Clock } from 'lucide-react';
+import { formatNumber, formatCurrency } from '@/lib/utils';
 
 export default function FahrtenPage() {
   const { data: session, status } = useSession() || {};
   const router = useRouter();
   const [fahrten, setFahrten] = useState<any[]>([]);
+  const [laufendeFahrten, setLaufendeFahrten] = useState<any[]>([]);
   const [offeneBuchungen, setOffeneBuchungen] = useState<any[]>([]);
   const [buchungen, setBuchungen] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  
+  // Modal states
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  
   const [selectedBuchung, setSelectedBuchung] = useState<any>(null);
+  const [selectedFahrt, setSelectedFahrt] = useState<any>(null);
+  const [editingFahrt, setEditingFahrt] = useState<any>(null);
+  
   const [formData, setFormData] = useState({
     buchungId: '',
     startKilometer: '',
     endKilometer: '',
+    bemerkungen: '',
   });
+  
   const [error, setError] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [konfliktWarnung, setKonfliktWarnung] = useState<any>(null);
-  const [editingFahrt, setEditingFahrt] = useState<any>(null);
-  const [updating, setUpdating] = useState(false);
 
   // Helper function to calculate expected kilometer reading from previous trip
   const getExpectedKilometer = (currentFahrt: any) => {
     if (!currentFahrt?.fahrzeugId) return null;
     
-    // Find previous trip for the same vehicle
     const vehicleTrips = fahrten
-      ?.filter((f: any) => f?.fahrzeugId === currentFahrt.fahrzeugId)
+      ?.filter((f: any) => f?.fahrzeugId === currentFahrt.fahrzeugId && f?.status === 'ABGESCHLOSSEN')
       ?.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     
     const currentIndex = vehicleTrips?.findIndex((f: any) => f.id === currentFahrt.id);
@@ -46,7 +55,16 @@ export default function FahrtenPage() {
     if (!fahrt?.kilometerKonflikt || fahrt?.konfliktGeloest) return null;
     
     const expectedKm = getExpectedKilometer(fahrt);
-    if (expectedKm === null) return null;
+    
+    // Auch ohne erwarteten Wert den Konflikt anzeigen
+    if (expectedKm === null) {
+      return {
+        expected: null,
+        actual: fahrt.startKilometer,
+        difference: null,
+        type: null
+      };
+    }
     
     const difference = fahrt.startKilometer - expectedKm;
     return {
@@ -79,12 +97,20 @@ export default function FahrtenPage() {
       if (fahrtenRes.ok) {
         const data = await fahrtenRes.json();
         setFahrten(data ?? []);
+        // Laufende Fahrten des aktuellen Users
+        const laufende = data?.filter?.((f: any) => 
+          f?.status === 'GESTARTET' && f?.fahrerId === (session?.user as any)?.id
+        ) ?? [];
+        setLaufendeFahrten(laufende);
       }
 
       if (buchungenRes.ok) {
         const data = await buchungenRes.json();
         setBuchungen(data ?? []);
-        const offene = data?.filter?.((b: any) => b?.status === 'ABGESCHLOSSEN' && !b?.fahrt) ?? [];
+        // Buchungen ohne Fahrt (GEPLANT oder ABGESCHLOSSEN ohne fahrt)
+        const offene = data?.filter?.((b: any) => 
+          (b?.status === 'GEPLANT' || b?.status === 'ABGESCHLOSSEN') && !b?.fahrt
+        ) ?? [];
         setOffeneBuchungen(offene);
       }
     } catch (error) {
@@ -94,35 +120,17 @@ export default function FahrtenPage() {
     }
   };
 
-  const handleOpenEmptyModal = () => {
-    setSelectedBuchung(null);
-    setEditingFahrt(null);
-    setFormData({ buchungId: '', startKilometer: '', endKilometer: '' });
-    setShowModal(true);
-    setKonfliktWarnung(null);
-  };
-
-  const handleOpenModal = (buchung: any) => {
-    setSelectedBuchung(buchung);
-    setEditingFahrt(null);
+  // === FAHRT STARTEN ===
+  const handleOpenStartModal = (buchung?: any) => {
+    setSelectedBuchung(buchung || null);
     setFormData({
-      buchungId: buchung.id,
+      buchungId: buchung?.id || '',
       startKilometer: buchung?.fahrzeug?.kilometerstand?.toString?.() ?? '',
       endKilometer: '',
+      bemerkungen: '',
     });
-    setShowModal(true);
-    setKonfliktWarnung(null);
-  };
-
-  const handleOpenEditModal = (fahrt: any) => {
-    setEditingFahrt(fahrt);
-    setSelectedBuchung(null);
-    setFormData({
-      buchungId: '',
-      startKilometer: fahrt.startKilometer.toString(),
-      endKilometer: fahrt.endKilometer.toString(),
-    });
-    setShowModal(true);
+    setShowStartModal(true);
+    setError('');
     setKonfliktWarnung(null);
   };
 
@@ -143,10 +151,100 @@ export default function FahrtenPage() {
     }
   };
 
+  const handleStartFahrt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+
+    try {
+      const response = await fetch('/api/fahrten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          buchungId: formData.buchungId,
+          startKilometer: formData.startKilometer,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Fehler beim Starten');
+      }
+
+      setShowStartModal(false);
+      setSelectedBuchung(null);
+      setFormData({ buchungId: '', startKilometer: '', endKilometer: '', bemerkungen: '' });
+      setKonfliktWarnung(null);
+      fetchData();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // === FAHRT ABSCHLIEßEN ===
+  const handleOpenCompleteModal = (fahrt: any) => {
+    setSelectedFahrt(fahrt);
+    setFormData({
+      buchungId: '',
+      startKilometer: fahrt.startKilometer.toString(),
+      endKilometer: '',
+      bemerkungen: '',
+    });
+    setShowCompleteModal(true);
+    setError('');
+  };
+
+  const handleCompleteFahrt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/fahrten/${selectedFahrt.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'complete',
+          endKilometer: formData.endKilometer,
+          bemerkungen: formData.bemerkungen,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Fehler beim Abschließen');
+      }
+
+      setShowCompleteModal(false);
+      setSelectedFahrt(null);
+      setFormData({ buchungId: '', startKilometer: '', endKilometer: '', bemerkungen: '' });
+      fetchData();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // === FAHRT BEARBEITEN ===
+  const handleOpenEditModal = (fahrt: any) => {
+    setEditingFahrt(fahrt);
+    setFormData({
+      buchungId: '',
+      startKilometer: fahrt.startKilometer.toString(),
+      endKilometer: fahrt.endKilometer?.toString() || '',
+      bemerkungen: fahrt.bemerkungen || '',
+    });
+    setShowEditModal(true);
+    setError('');
+  };
+
   const handleUpdateFahrt = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setUpdating(true);
+    setSubmitting(true);
 
     try {
       const response = await fetch(`/api/fahrten/${editingFahrt.id}`, {
@@ -155,6 +253,7 @@ export default function FahrtenPage() {
         body: JSON.stringify({
           startKilometer: formData.startKilometer,
           endKilometer: formData.endKilometer,
+          bemerkungen: formData.bemerkungen,
         }),
       });
 
@@ -163,48 +262,27 @@ export default function FahrtenPage() {
         throw new Error(data.error || 'Fehler beim Aktualisieren');
       }
 
-      setShowModal(false);
+      setShowEditModal(false);
       setEditingFahrt(null);
-      setFormData({ buchungId: '', startKilometer: '', endKilometer: '' });
-      setKonfliktWarnung(null);
+      setFormData({ buchungId: '', startKilometer: '', endKilometer: '', bemerkungen: '' });
       fetchData();
     } catch (err: any) {
       setError(err.message);
     } finally {
-      setUpdating(false);
+      setSubmitting(false);
     }
   };
 
-  const handleCreateFahrt = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const closeAllModals = () => {
+    setShowStartModal(false);
+    setShowCompleteModal(false);
+    setShowEditModal(false);
+    setSelectedBuchung(null);
+    setSelectedFahrt(null);
+    setEditingFahrt(null);
     setError('');
-    setCreating(true);
-
-    try {
-      const response = await fetch('/api/fahrten', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Fehler beim Erstellen');
-      }
-
-      setShowModal(false);
-      setSelectedBuchung(null);
-      setFormData({ buchungId: '', startKilometer: '', endKilometer: '' });
-      setKonfliktWarnung(null);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setCreating(false);
-    }
+    setKonfliktWarnung(null);
   };
-
-  const handleFormSubmit = editingFahrt ? handleUpdateFahrt : handleCreateFahrt;
 
   if (loading || status === 'loading') {
     return (
@@ -214,80 +292,137 @@ export default function FahrtenPage() {
     );
   }
 
+  const abgeschlosseneFahrten = fahrten?.filter?.((f: any) => f?.status === 'ABGESCHLOSSEN') ?? [];
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Fahrten</h1>
           <p className="text-gray-600">Erfassen und verwalten Sie Ihre Fahrten</p>
         </div>
         <button
-          onClick={handleOpenEmptyModal}
+          onClick={() => handleOpenStartModal()}
           className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
-          Fahrt erfassen
+          Fahrt starten
         </button>
       </div>
 
-      {/* Offene Fahrten */}
-      {offeneBuchungen.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertCircle className="w-5 h-5 text-orange-600" aria-hidden="true" />
-            <h2 className="text-xl font-bold text-gray-900">Offene Fahrten ({offeneBuchungen.length})</h2>
+      {/* LAUFENDE FAHRTEN - Prominent ganz oben */}
+      {laufendeFahrten.length > 0 && (
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-6 mb-8 shadow-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-white/20 rounded-full p-2">
+              <Play className="w-6 h-6 text-white" aria-hidden="true" />
+            </div>
+            <h2 className="text-2xl font-bold text-white">
+              Laufende Fahrt{laufendeFahrten.length > 1 ? 'en' : ''}
+            </h2>
           </div>
-          <p className="text-sm text-gray-600 mb-4">
-            Diese Buchungen sind abgeschlossen, aber es wurde noch keine Fahrt erfasst.
-          </p>
-          <div className="space-y-3">
-            {offeneBuchungen?.map?.((buchung: any) => (
+          <div className="space-y-4">
+            {laufendeFahrten.map((fahrt: any) => (
               <div
-                key={buchung?.id}
-                className="bg-white rounded-lg p-4 flex items-center justify-between"
+                key={fahrt.id}
+                className="bg-white rounded-xl p-5 shadow-md"
               >
-                <div>
-                  <h3 className="font-semibold text-gray-900">{buchung?.fahrzeug?.name}</h3>
-                  <p className="text-sm text-gray-600">
-                    Buchung vom {new Date(buchung?.startZeit)?.toLocaleDateString?.('de-DE') ?? ''}
-                  </p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Car className="w-5 h-5 text-green-600" aria-hidden="true" />
+                      <h3 className="text-xl font-bold text-gray-900">{fahrt.fahrzeug?.name}</h3>
+                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                        Unterwegs
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div>
+                        <span className="font-medium">Gestartet:</span>{' '}
+                        {new Date(fahrt.createdAt).toLocaleString('de-DE')}
+                      </div>
+                      <div>
+                        <span className="font-medium">Startkilometer:</span>{' '}
+                        {formatNumber(fahrt.startKilometer)} km
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleOpenCompleteModal(fahrt)}
+                    className="inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md text-lg"
+                  >
+                    <CheckCircle className="w-5 h-5 mr-2" aria-hidden="true" />
+                    Fahrt beenden
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleOpenModal(buchung)}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition-colors"
-                >
-                  Fahrt erfassen
-                </button>
               </div>
-            )) ?? null}
+            ))}
           </div>
         </div>
       )}
 
-      {/* Fahrten Liste */}
+      {/* Offene Buchungen (ohne Fahrt) */}
+      {offeneBuchungen.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5 text-orange-600" aria-hidden="true" />
+            <h2 className="text-xl font-bold text-gray-900">
+              Buchungen ohne Fahrt ({offeneBuchungen.length})
+            </h2>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            Diese Buchungen haben noch keine zugehörige Fahrt.
+          </p>
+          <div className="space-y-3">
+            {offeneBuchungen.map((buchung: any) => (
+              <div
+                key={buchung.id}
+                className="bg-white rounded-lg p-4 flex items-center justify-between"
+              >
+                <div>
+                  <h3 className="font-semibold text-gray-900">{buchung.fahrzeug?.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    Buchung vom {new Date(buchung.startZeit).toLocaleDateString('de-DE')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleOpenStartModal(buchung)}
+                  className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+                >
+                  <Play className="w-4 h-4 mr-2" aria-hidden="true" />
+                  Fahrt starten
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Abgeschlossene Fahrten */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Alle Fahrten</h2>
-        {fahrten.length === 0 ? (
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Abgeschlossene Fahrten</h2>
+        {abgeschlosseneFahrten.length === 0 ? (
           <div className="text-center py-12">
             <Route className="w-16 h-16 text-gray-400 mx-auto mb-4" aria-hidden="true" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Keine Fahrten vorhanden
+              Keine abgeschlossenen Fahrten
             </h3>
-            <p className="text-gray-600">Erfassen Sie Ihre erste Fahrt</p>
+            <p className="text-gray-600">Starten Sie Ihre erste Fahrt</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {fahrten?.map?.((fahrt: any) => (
+            {abgeschlosseneFahrten.map((fahrt: any) => (
               <div
-                key={fahrt?.id}
+                key={fahrt.id}
                 className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Car className="w-5 h-5 text-blue-600" aria-hidden="true" />
-                      <h3 className="font-bold text-gray-900">{fahrt?.fahrzeug?.name}</h3>
-                      {fahrt?.fahrerId === (session?.user as any)?.id && (
+                      <h3 className="font-bold text-gray-900">{fahrt.fahrzeug?.name}</h3>
+                      {fahrt.fahrerId === (session?.user as any)?.id && (
                         <button
                           onClick={() => handleOpenEditModal(fahrt)}
                           className="ml-2 p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
@@ -299,22 +434,27 @@ export default function FahrtenPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600">
                       <div>
-                        <span className="font-medium">Fahrer:</span> {fahrt?.fahrer?.name}
+                        <span className="font-medium">Fahrer:</span> {fahrt.fahrer?.name}
                       </div>
                       <div>
-                        <span className="font-medium">Strecke:</span> {fahrt?.startKilometer} - {fahrt?.endKilometer} km
+                        <span className="font-medium">Strecke:</span> {formatNumber(fahrt.startKilometer)} - {formatNumber(fahrt.endKilometer)} km
                       </div>
                       <div>
-                        <span className="font-medium">Gefahren:</span> {fahrt?.gefahreneKm} km
+                        <span className="font-medium">Gefahren:</span> {formatNumber(fahrt.gefahreneKm)} km
                       </div>
                     </div>
+                    {fahrt.bemerkungen && (
+                      <div className="text-sm text-gray-500 mt-2 italic">
+                        "{fahrt.bemerkungen}"
+                      </div>
+                    )}
                     <div className="text-sm text-gray-500 mt-2">
-                      {new Date(fahrt?.createdAt)?.toLocaleDateString?.('de-DE') ?? ''}
+                      {new Date(fahrt.createdAt).toLocaleDateString('de-DE')}
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-blue-600">
-                      {fahrt?.kosten?.toFixed?.(2) ?? '0.00'} €
+                      {formatCurrency(fahrt.kosten)} €
                     </p>
                     {(() => {
                       const konfliktDetails = getKonfliktDetails(fahrt);
@@ -323,40 +463,47 @@ export default function FahrtenPage() {
                       return (
                         <div className="text-xs text-orange-600 font-medium mt-1">
                           <div className="mb-1">Kilometerkonflikt</div>
-                          <div className="text-xs text-orange-500">
-                            Erwartet: {konfliktDetails.expected?.toLocaleString('de-DE')} km
-                          </div>
-                          <div className="text-xs text-orange-500">
-                            Eingegeben: {konfliktDetails.actual?.toLocaleString('de-DE')} km
-                          </div>
-                          <div className="text-xs text-orange-500">
-                            Differenz: {konfliktDetails.difference?.toLocaleString('de-DE')} km {konfliktDetails.type}
-                          </div>
+                          {konfliktDetails.expected !== null ? (
+                            <>
+                              <div className="text-xs text-orange-500">
+                                Erwartet: {formatNumber(konfliktDetails.expected)} km
+                              </div>
+                              <div className="text-xs text-orange-500">
+                                Eingegeben: {formatNumber(konfliktDetails.actual)} km
+                              </div>
+                              <div className="text-xs text-orange-500">
+                                Differenz: {formatNumber(konfliktDetails.difference)} km {konfliktDetails.type}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-xs text-orange-500">
+                              Startkilometer weicht vom Fahrzeugstand ab
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
                   </div>
                 </div>
               </div>
-            )) ?? null}
+            ))}
           </div>
         )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
+      {/* === MODAL: FAHRT STARTEN === */}
+      {showStartModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {editingFahrt ? 'Fahrt bearbeiten' : 'Fahrt erfassen'}
-              </h2>
+              <div className="flex items-center gap-3">
+                <div className="bg-green-100 rounded-full p-2">
+                  <Play className="w-5 h-5 text-green-600" aria-hidden="true" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Fahrt starten</h2>
+              </div>
               <button
-                onClick={() => {
-                  setShowModal(false);
-                  setError('');
-                  setKonfliktWarnung(null);
-                }}
+                onClick={closeAllModals}
                 className="p-2 hover:bg-gray-100 rounded-lg"
                 aria-label="Schließen"
               >
@@ -364,12 +511,12 @@ export default function FahrtenPage() {
               </button>
             </div>
 
-            <div className="mb-6 space-y-4">
-              {!editingFahrt && (
-                <div>
-                  <label htmlFor="buchung" className="block text-sm font-medium text-gray-700 mb-2">
-                    Buchung auswählen *
-                  </label>
+            <form onSubmit={handleStartFahrt} className="space-y-4">
+              {/* Buchung auswählen */}
+              <div>
+                <label htmlFor="buchung" className="block text-sm font-medium text-gray-700 mb-2">
+                  Buchung auswählen *
+                </label>
                 <select
                   id="buchung"
                   value={formData.buchungId}
@@ -378,63 +525,39 @@ export default function FahrtenPage() {
                     const buchung = buchungen?.find?.((b: any) => b?.id === buchungId) ?? null;
                     setSelectedBuchung(buchung);
                     setFormData({
+                      ...formData,
                       buchungId,
                       startKilometer: buchung?.fahrzeug?.kilometerstand?.toString?.() ?? '',
-                      endKilometer: '',
                     });
                     setKonfliktWarnung(null);
                   }}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
                 >
                   <option value="" disabled>
                     Bitte Buchung wählen
                   </option>
                   {buchungen
-                    ?.filter?.((b: any) => !b?.fahrt)
+                    ?.filter?.((b: any) => !b?.fahrt && b?.status !== 'STORNIERT')
                     ?.map?.((b: any) => (
                       <option key={b?.id} value={b?.id}>
                         {b?.fahrzeug?.name} – {b?.startZeit ? new Date(b.startZeit).toLocaleString('de-DE') : ''}
                       </option>
                     )) ?? null}
                 </select>
-                </div>
-              )}
+              </div>
 
-              {editingFahrt && (
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <p className="font-semibold text-gray-900">{editingFahrt?.fahrzeug?.name}</p>
-                  <p className="text-sm text-gray-600">
-                    Ursprüngliche Fahrt: {editingFahrt?.startKilometer} - {editingFahrt?.endKilometer} km
-                  </p>
-                </div>
-              )}
-
+              {/* Fahrzeug-Info */}
               {selectedBuchung && (
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <p className="font-semibold text-gray-900">{selectedBuchung?.fahrzeug?.name}</p>
+                <div className="bg-green-50 rounded-lg p-4">
+                  <p className="font-semibold text-gray-900">{selectedBuchung.fahrzeug?.name}</p>
                   <p className="text-sm text-gray-600">
-                    Aktueller Kilometerstand: {selectedBuchung?.fahrzeug?.kilometerstand?.toLocaleString?.('de-DE') ?? 0} km
+                    Aktueller Kilometerstand: {formatNumber(selectedBuchung.fahrzeug?.kilometerstand)} km
                   </p>
                 </div>
               )}
-            </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3" role="alert">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
-            )}
-
-            {konfliktWarnung && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6 flex items-start gap-3" role="alert">
-                <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                <p className="text-sm text-orange-800">{konfliktWarnung.message}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleFormSubmit} className="space-y-4">
+              {/* Startkilometer */}
               <div>
                 <label htmlFor="startKilometer" className="block text-sm font-medium text-gray-700 mb-2">
                   Startkilometer *
@@ -449,11 +572,81 @@ export default function FahrtenPage() {
                   }}
                   required
                   min="0"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  aria-required="true"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
 
+              {/* Fehler */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              {/* Konflikt-Warnung */}
+              {konfliktWarnung && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-start gap-3" role="alert">
+                  <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <p className="text-sm text-orange-800">{konfliktWarnung.message}</p>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={submitting || !formData.buchungId}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                >
+                  {submitting ? 'Wird gestartet...' : 'Fahrt starten'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAllModals}
+                  className="px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* === MODAL: FAHRT ABSCHLIEßEN === */}
+      {showCompleteModal && selectedFahrt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 rounded-full p-2">
+                  <CheckCircle className="w-5 h-5 text-blue-600" aria-hidden="true" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Fahrt beenden</h2>
+              </div>
+              <button
+                onClick={closeAllModals}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+                aria-label="Schließen"
+              >
+                <X className="w-5 h-5" aria-hidden="true" />
+              </button>
+            </div>
+
+            {/* Fahrt-Info */}
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <p className="font-semibold text-gray-900">{selectedFahrt.fahrzeug?.name}</p>
+              <p className="text-sm text-gray-600">
+                Gestartet: {new Date(selectedFahrt.createdAt).toLocaleString('de-DE')}
+              </p>
+              <p className="text-sm text-gray-600">
+                Startkilometer: {formatNumber(selectedFahrt.startKilometer)} km
+              </p>
+            </div>
+
+            <form onSubmit={handleCompleteFahrt} className="space-y-4">
+              {/* Endkilometer */}
               <div>
                 <label htmlFor="endKilometer" className="block text-sm font-medium text-gray-700 mb-2">
                   Endkilometer *
@@ -464,46 +657,188 @@ export default function FahrtenPage() {
                   value={formData.endKilometer}
                   onChange={(e) => setFormData({ ...formData, endKilometer: e.target.value })}
                   required
-                  min={formData.startKilometer || '0'}
+                  min={selectedFahrt.startKilometer + 1}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  aria-required="true"
                 />
               </div>
 
+              {/* Bemerkungen */}
+              <div>
+                <label htmlFor="bemerkungen" className="block text-sm font-medium text-gray-700 mb-2">
+                  Bemerkungen (optional)
+                </label>
+                <textarea
+                  id="bemerkungen"
+                  value={formData.bemerkungen}
+                  onChange={(e) => setFormData({ ...formData, bemerkungen: e.target.value })}
+                  rows={3}
+                  placeholder="z.B. Tankstop, besondere Vorkommnisse..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* Kosten-Vorschau */}
+              {formData.endKilometer && (
+                <div className="bg-green-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">Gefahrene Kilometer:</span>{' '}
+                    {parseInt(formData.endKilometer) - selectedFahrt.startKilometer} km
+                  </p>
+                  <p className="text-lg font-bold text-green-700">
+                    Kosten:{' '}
+                    {formatCurrency(
+                      (parseInt(formData.endKilometer) - selectedFahrt.startKilometer) *
+                      (selectedFahrt.fahrzeug?.kilometerpauschale ?? 0)
+                    )}{' '}
+                    €
+                  </p>
+                </div>
+              )}
+
+              {/* Fehler */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={submitting || !formData.endKilometer}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                >
+                  {submitting ? 'Wird abgeschlossen...' : 'Fahrt abschließen'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAllModals}
+                  className="px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* === MODAL: FAHRT BEARBEITEN === */}
+      {showEditModal && editingFahrt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-gray-100 rounded-full p-2">
+                  <Edit className="w-5 h-5 text-gray-600" aria-hidden="true" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Fahrt bearbeiten</h2>
+              </div>
+              <button
+                onClick={closeAllModals}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+                aria-label="Schließen"
+              >
+                <X className="w-5 h-5" aria-hidden="true" />
+              </button>
+            </div>
+
+            {/* Fahrt-Info */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <p className="font-semibold text-gray-900">{editingFahrt.fahrzeug?.name}</p>
+              <p className="text-sm text-gray-600">
+                Erstellt: {new Date(editingFahrt.createdAt).toLocaleString('de-DE')}
+              </p>
+            </div>
+
+            <form onSubmit={handleUpdateFahrt} className="space-y-4">
+              {/* Startkilometer */}
+              <div>
+                <label htmlFor="editStartKilometer" className="block text-sm font-medium text-gray-700 mb-2">
+                  Startkilometer *
+                </label>
+                <input
+                  id="editStartKilometer"
+                  type="number"
+                  value={formData.startKilometer}
+                  onChange={(e) => setFormData({ ...formData, startKilometer: e.target.value })}
+                  required
+                  min="0"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Endkilometer */}
+              <div>
+                <label htmlFor="editEndKilometer" className="block text-sm font-medium text-gray-700 mb-2">
+                  Endkilometer *
+                </label>
+                <input
+                  id="editEndKilometer"
+                  type="number"
+                  value={formData.endKilometer}
+                  onChange={(e) => setFormData({ ...formData, endKilometer: e.target.value })}
+                  required
+                  min={formData.startKilometer || '0'}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Bemerkungen */}
+              <div>
+                <label htmlFor="editBemerkungen" className="block text-sm font-medium text-gray-700 mb-2">
+                  Bemerkungen (optional)
+                </label>
+                <textarea
+                  id="editBemerkungen"
+                  value={formData.bemerkungen}
+                  onChange={(e) => setFormData({ ...formData, bemerkungen: e.target.value })}
+                  rows={3}
+                  placeholder="z.B. Tankstop, besondere Vorkommnisse..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* Kosten-Vorschau */}
               {formData.startKilometer && formData.endKilometer && (
                 <div className="bg-blue-50 rounded-lg p-4">
                   <p className="text-sm text-gray-700">
                     <span className="font-medium">Gefahrene Kilometer:</span>{' '}
                     {parseInt(formData.endKilometer) - parseInt(formData.startKilometer)} km
                   </p>
-                  <p className="text-sm text-gray-700">
-                    <span className="font-medium">Kosten:</span>{' '}
-                    {(
+                  <p className="text-lg font-bold text-blue-700">
+                    Kosten:{' '}
+                    {formatCurrency(
                       (parseInt(formData.endKilometer) - parseInt(formData.startKilometer)) *
-                      ((selectedBuchung?.fahrzeug?.kilometerpauschale ?? editingFahrt?.fahrzeug?.kilometerpauschale) ?? 0)
-                    ).toFixed(2)}{' '}
+                      (editingFahrt.fahrzeug?.kilometerpauschale ?? 0)
+                    )}{' '}
                     €
                   </p>
                 </div>
               )}
 
+              {/* Fehler */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              {/* Buttons */}
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  disabled={creating || updating}
+                  disabled={submitting}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
-                  aria-label="Fahrt erfassen"
                 >
-                  {creating || updating ? (editingFahrt ? 'Wird aktualisiert...' : 'Wird erfasst...') : (editingFahrt ? 'Aktualisieren' : 'Erfassen')}
+                  {submitting ? 'Wird aktualisiert...' : 'Speichern'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setError('');
-                    setKonfliktWarnung(null);
-                    setEditingFahrt(null);
-                  }}
+                  onClick={closeAllModals}
                   className="px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
                 >
                   Abbrechen

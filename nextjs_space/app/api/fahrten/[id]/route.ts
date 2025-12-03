@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+// PUT: Fahrt abschließen (Endkilometer + Bemerkungen) oder bearbeiten
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
@@ -18,14 +19,7 @@ export async function PUT(
     const userId = (session.user as any)?.id;
     const fahrtId = params.id;
     const body = await request.json();
-    const { startKilometer, endKilometer } = body;
-
-    if (startKilometer === undefined || endKilometer === undefined) {
-      return NextResponse.json(
-        { error: 'Start- und Endkilometer sind erforderlich' },
-        { status: 400 }
-      );
-    }
+    const { startKilometer, endKilometer, bemerkungen, action } = body;
 
     // Get existing trip to check ownership
     const existingFahrt = await prisma.fahrt.findUnique({
@@ -42,6 +36,65 @@ export async function PUT(
       return NextResponse.json(
         { error: 'Sie können nur Ihre eigenen Fahrten bearbeiten' },
         { status: 403 }
+      );
+    }
+
+    // Action: complete - Fahrt abschließen (nur endKilometer erforderlich)
+    if (action === 'complete') {
+      if (endKilometer === undefined) {
+        return NextResponse.json(
+          { error: 'Endkilometer ist erforderlich' },
+          { status: 400 }
+        );
+      }
+
+      const start = existingFahrt.startKilometer;
+      const end = parseInt(endKilometer);
+
+      if (start >= end) {
+        return NextResponse.json(
+          { error: 'Endkilometer muss größer als Startkilometer sein' },
+          { status: 400 }
+        );
+      }
+
+      const gefahreneKm = end - start;
+      const kosten = gefahreneKm * existingFahrt.fahrzeug.kilometerpauschale;
+
+      // Update the trip to completed
+      const updatedFahrt = await prisma.fahrt.update({
+        where: { id: fahrtId },
+        data: {
+          endKilometer: end,
+          gefahreneKm,
+          kosten,
+          status: 'ABGESCHLOSSEN',
+          bemerkungen: bemerkungen || null,
+          updatedAt: new Date(),
+        },
+        include: { fahrzeug: true, fahrer: true, buchung: true },
+      });
+
+      // Update vehicle's kilometer reading
+      await prisma.fahrzeug.update({
+        where: { id: existingFahrt.fahrzeugId },
+        data: { kilometerstand: end },
+      });
+
+      // Update buchung status to ABGESCHLOSSEN
+      await prisma.buchung.update({
+        where: { id: existingFahrt.buchungId },
+        data: { status: 'ABGESCHLOSSEN' },
+      });
+
+      return NextResponse.json(updatedFahrt);
+    }
+
+    // Default action: edit - Fahrt bearbeiten (beide Kilometer erforderlich)
+    if (startKilometer === undefined || endKilometer === undefined) {
+      return NextResponse.json(
+        { error: 'Start- und Endkilometer sind erforderlich' },
+        { status: 400 }
       );
     }
 
@@ -69,6 +122,7 @@ export async function PUT(
         endKilometer: end,
         gefahreneKm,
         kosten,
+        bemerkungen: bemerkungen !== undefined ? bemerkungen : existingFahrt.bemerkungen,
         kilometerKonflikt,
         konfliktGeloest: !kilometerKonflikt,
         updatedAt: new Date(),

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Car, Plus, MapPin, TrendingUp, Settings } from 'lucide-react';
+import { formatNumber, formatCurrency } from '@/lib/utils';
 
 interface Fahrzeug {
   id: string;
@@ -159,7 +160,7 @@ export default function FahrzeugePage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
                     <TrendingUp className="w-4 h-4" aria-hidden="true" />
-                    <span>{fahrzeug?.kilometerstand?.toLocaleString?.('de-DE') ?? 0} km</span>
+                    <span>{formatNumber(fahrzeug?.kilometerstand)} km</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <MapPin className="w-4 h-4" aria-hidden="true" />
@@ -170,7 +171,7 @@ export default function FahrzeugePage() {
                   <div>
                     <p className="text-xs text-gray-500">Kilometerpauschale</p>
                     <p className="text-lg font-bold text-blue-600">
-                      {fahrzeug?.kilometerpauschale?.toFixed?.(2) ?? '0.00'} €/km
+                      {formatCurrency(fahrzeug?.kilometerpauschale)} €/km
                     </p>
                   </div>
                   <Settings

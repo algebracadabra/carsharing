@@ -35,6 +35,11 @@ enum ZahlungStatus {
   BESTAETIGT
 }
 
+enum FahrtStatus {
+  GESTARTET
+  ABGESCHLOSSEN
+}
+
 enum ZahlungsArt {
   BAR
   TANKEN
@@ -135,18 +140,20 @@ model Buchung {
 }
 
 model Fahrt {
-  id                String   @id @default(cuid())
-  buchungId         String   @unique
+  id                String      @id @default(cuid())
+  buchungId         String      @unique
   fahrzeugId        String
   fahrerId          String
   startKilometer    Int
-  endKilometer      Int
-  gefahreneKm       Int
-  kosten            Float
-  kilometerKonflikt Boolean  @default(false)
-  konfliktGeloest   Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  endKilometer      Int?
+  gefahreneKm       Int?
+  kosten            Float?
+  status            FahrtStatus @default(GESTARTET)
+  bemerkungen       String?
+  kilometerKonflikt Boolean     @default(false)
+  konfliktGeloest   Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
   buchung  Buchung  @relation(fields: [buchungId], references: [id], onDelete: Cascade)
   fahrzeug Fahrzeug @relation(fields: [fahrzeugId], references: [id], onDelete: Cascade)

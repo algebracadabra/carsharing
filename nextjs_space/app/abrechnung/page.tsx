@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Wallet, Plus, CheckCircle, Clock, X, AlertCircle, Upload, Image as ImageIcon } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 export default function AbrechnungPage() {
   const { data: session, status } = useSession() || {};
@@ -216,8 +217,8 @@ export default function AbrechnungPage() {
                     <h3 className="font-bold text-gray-900">{konto?.fahrerName}</h3>
                     <p className="text-sm text-gray-600">{konto?.fahrzeugName}</p>
                     <div className="mt-2 text-sm text-gray-600">
-                      <p>Schulden: {konto?.schulden?.toFixed?.(2) ?? '0.00'} €</p>
-                      <p>Zahlungen: {konto?.zahlungen?.toFixed?.(2) ?? '0.00'} €</p>
+                      <p>Schulden: {formatCurrency(konto?.schulden)} €</p>
+                      <p>Zahlungen: {formatCurrency(konto?.zahlungen)} €</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -226,7 +227,7 @@ export default function AbrechnungPage() {
                         konto?.saldo > 0 ? 'text-red-600' : 'text-green-600'
                       }`}
                     >
-                      {konto?.saldo?.toFixed?.(2) ?? '0.00'} €
+                      {formatCurrency(konto?.saldo)} €
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       {konto?.saldo > 0 ? 'Offen' : 'Beglichen'}
@@ -263,7 +264,7 @@ export default function AbrechnungPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <Wallet className="w-5 h-5 text-blue-600" aria-hidden="true" />
                         <h3 className="font-bold text-gray-900">
-                          {zahlung?.betrag?.toFixed?.(2) ?? '0.00'} €
+                          {formatCurrency(zahlung?.betrag)} €
                         </h3>
                       </div>
                       <p className="text-sm text-gray-600">

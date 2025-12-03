@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check } from 'lucide-react';
+import { formatNumber, formatCurrency } from '@/lib/utils';
 
 export default function FahrzeugDetailPage() {
   const { data: session, status } = useSession() || {};
@@ -218,7 +219,7 @@ export default function FahrzeugDetailPage() {
                 <h3 className="font-semibold text-gray-900">Kilometerstand</h3>
               </div>
               <p className="text-2xl font-bold text-blue-600">
-                {fahrzeug?.kilometerstand?.toLocaleString?.('de-DE') ?? 0} km
+                {formatNumber(fahrzeug?.kilometerstand)} km
               </p>
             </div>
 
@@ -228,7 +229,7 @@ export default function FahrzeugDetailPage() {
                 <h3 className="font-semibold text-gray-900">Kilometerpauschale</h3>
               </div>
               <p className="text-2xl font-bold text-green-600">
-                {fahrzeug?.kilometerpauschale?.toFixed?.(2) ?? '0.00'} €/km
+                {formatCurrency(fahrzeug?.kilometerpauschale)} €/km
               </p>
             </div>
 
@@ -297,7 +298,7 @@ export default function FahrzeugDetailPage() {
                 <label htmlFor="treibstoffKosten" className="font-semibold text-gray-900">Treibstoffkosten hinzufügen</label>
               </div>
               <p className="text-sm text-gray-600 mb-2">
-                Aktuell: {fahrzeug?.treibstoffKosten?.toFixed?.(2) ?? '0.00'} €
+                Aktuell: {formatCurrency(fahrzeug?.treibstoffKosten)} €
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold text-orange-600">+</span>
@@ -340,7 +341,7 @@ export default function FahrzeugDetailPage() {
                 <label htmlFor="wartungsReparaturKosten" className="font-semibold text-gray-900">Wartung & Reparatur hinzufügen</label>
               </div>
               <p className="text-sm text-gray-600 mb-2">
-                Aktuell: {fahrzeug?.wartungsReparaturKosten?.toFixed?.(2) ?? '0.00'} €
+                Aktuell: {formatCurrency(fahrzeug?.wartungsReparaturKosten)} €
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold text-rose-600">+</span>
@@ -366,7 +367,7 @@ export default function FahrzeugDetailPage() {
                 <h3 className="font-semibold text-gray-900">Treibstoffkosten</h3>
               </div>
               <p className="text-2xl font-bold text-orange-600">
-                {fahrzeug?.treibstoffKosten?.toFixed?.(2) ?? '0.00'} €
+                {formatCurrency(fahrzeug?.treibstoffKosten)} €
               </p>
             </div>
 
@@ -376,7 +377,7 @@ export default function FahrzeugDetailPage() {
                 <h3 className="font-semibold text-gray-900">Fixkosten</h3>
               </div>
               <p className="text-2xl font-bold text-indigo-600">
-                {fahrzeug?.fixkosten?.toFixed?.(2) ?? '0.00'} €
+                {formatCurrency(fahrzeug?.fixkosten)} €
               </p>
             </div>
 
@@ -386,7 +387,7 @@ export default function FahrzeugDetailPage() {
                 <h3 className="font-semibold text-gray-900">Wartung & Reparatur</h3>
               </div>
               <p className="text-2xl font-bold text-rose-600">
-                {fahrzeug?.wartungsReparaturKosten?.toFixed?.(2) ?? '0.00'} €
+                {formatCurrency(fahrzeug?.wartungsReparaturKosten)} €
               </p>
             </div>
           </div>
@@ -458,7 +459,7 @@ export default function FahrzeugDetailPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-blue-600">{fahrt?.kosten?.toFixed?.(2) ?? '0.00'} €</p>
+                  <p className="font-bold text-blue-600">{formatCurrency(fahrt?.kosten)} €</p>
                   <p className="text-xs text-gray-500">
                     {new Date(fahrt?.createdAt)?.toLocaleDateString?.('de-DE') ?? ''}
                   </p>

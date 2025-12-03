@@ -44,6 +44,7 @@ export async function GET(request: Request) {
   }
 }
 
+// POST: Fahrt starten (nur Buchung + Startkilometer)
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -53,11 +54,11 @@ export async function POST(request: Request) {
 
     const userId = (session.user as any)?.id;
     const body = await request.json();
-    const { buchungId, startKilometer, endKilometer } = body;
+    const { buchungId, startKilometer } = body;
 
-    if (!buchungId || startKilometer === undefined || endKilometer === undefined) {
+    if (!buchungId || startKilometer === undefined) {
       return NextResponse.json(
-        { error: 'Alle Felder sind erforderlich' },
+        { error: 'Buchung und Startkilometer sind erforderlich' },
         { status: 400 }
       );
     }
@@ -77,39 +78,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Stornierte Buchungen können keine Fahrten haben' }, { status: 400 });
     }
 
+    // Check if fahrt already exists for this buchung
+    const existingFahrt = await prisma.fahrt.findUnique({
+      where: { buchungId },
+    });
+    if (existingFahrt) {
+      return NextResponse.json({ error: 'Für diese Buchung existiert bereits eine Fahrt' }, { status: 400 });
+    }
+
     const start = parseInt(startKilometer);
-    const end = parseInt(endKilometer);
-    const gefahreneKm = end - start;
-    const kosten = gefahreneKm * buchung.fahrzeug.kilometerpauschale;
 
     // Check for kilometer conflict
     const kilometerKonflikt = start !== buchung.fahrzeug.kilometerstand;
 
+    // Create fahrt with status GESTARTET (no end kilometer yet)
     const fahrt = await prisma.fahrt.create({
       data: {
         buchungId,
         fahrzeugId: buchung.fahrzeugId,
         fahrerId: userId,
         startKilometer: start,
-        endKilometer: end,
-        gefahreneKm,
-        kosten,
+        endKilometer: null,
+        gefahreneKm: null,
+        kosten: null,
+        status: 'GESTARTET',
         kilometerKonflikt,
         konfliktGeloest: !kilometerKonflikt,
       },
       include: { fahrzeug: true, fahrer: true, buchung: true },
     });
 
-    // Update fahrzeug kilometerstand
-    await prisma.fahrzeug.update({
-      where: { id: buchung.fahrzeugId },
-      data: { kilometerstand: end },
-    });
-
-    // Update buchung status
+    // Update buchung status to LAUFEND
     await prisma.buchung.update({
       where: { id: buchungId },
-      data: { status: 'ABGESCHLOSSEN' },
+      data: { status: 'LAUFEND' },
     });
 
     return NextResponse.json(fahrt, { status: 201 });
