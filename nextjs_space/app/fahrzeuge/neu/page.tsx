@@ -12,6 +12,7 @@ export default function NeuFahrzeugPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [users, setUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     kilometerstand: '',
@@ -19,6 +20,7 @@ export default function NeuFahrzeugPage() {
     schluesselablageort: '',
     status: 'VERFUEGBAR',
     foto: '',
+    halterId: '',
   });
 
   const userRole = (session?.user as any)?.role;
@@ -27,7 +29,28 @@ export default function NeuFahrzeugPage() {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [status, router]);
+    // Nicht-Admins zur Fahrzeuge-Seite weiterleiten
+    if (status === 'authenticated' && userRole !== 'ADMIN') {
+      router.push('/fahrzeuge');
+    }
+  }, [status, router, userRole]);
+
+  // Benutzer laden für Halter-Auswahl
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (userRole !== 'ADMIN') return;
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const data = await response.json();
+          setUsers(data);
+        }
+      } catch (err) {
+        console.error('Fehler beim Laden der Benutzer:', err);
+      }
+    };
+    fetchUsers();
+  }, [userRole]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -232,6 +255,27 @@ export default function NeuFahrzeugPage() {
               <option value="VERFUEGBAR">Verfügbar</option>
               <option value="IN_WARTUNG">In Wartung</option>
               <option value="AUSSER_BETRIEB">Außer Betrieb</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="halterId" className="block text-sm font-medium text-gray-700 mb-2">
+              Halter (Fahrzeugbesitzer) *
+            </label>
+            <select
+              id="halterId"
+              value={formData.halterId}
+              onChange={(e) => setFormData({ ...formData, halterId: e.target.value })}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-required="true"
+            >
+              <option value="">Halter auswählen...</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name} ({user.email}) - {user.role}
+                </option>
+              ))}
             </select>
           </div>
 

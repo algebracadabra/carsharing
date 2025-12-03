@@ -79,14 +79,16 @@ export default function FahrzeugePage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Fahrzeuge</h1>
           <p className="text-gray-600">Verwalten Sie alle verfügbaren Fahrzeuge</p>
         </div>
-        <Link
-          href="/fahrzeuge/neu"
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
-          aria-label="Neues Fahrzeug hinzufügen"
-        >
-          <Plus className="w-5 h-5" aria-hidden="true" />
-          Fahrzeug hinzufügen
-        </Link>
+        {userRole === 'ADMIN' && (
+          <Link
+            href="/fahrzeuge/neu"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
+            aria-label="Neues Fahrzeug hinzufügen"
+          >
+            <Plus className="w-5 h-5" aria-hidden="true" />
+            Fahrzeug hinzufügen
+          </Link>
+        )}
       </div>
 
       {fahrzeuge.length === 0 ? (
@@ -98,15 +100,17 @@ export default function FahrzeugePage() {
             Noch keine Fahrzeuge vorhanden
           </h3>
           <p className="text-gray-600 mb-4">
-            Fügen Sie Ihr erstes Fahrzeug hinzu
+            {userRole === 'ADMIN' ? 'Fügen Sie Ihr erstes Fahrzeug hinzu' : 'Es sind noch keine Fahrzeuge verfügbar'}
           </p>
-          <Link
-            href="/fahrzeuge/neu"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
-          >
-            <Plus className="w-5 h-5" aria-hidden="true" />
-            Fahrzeug hinzufügen
-          </Link>
+          {userRole === 'ADMIN' && (
+            <Link
+              href="/fahrzeuge/neu"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
+            >
+              <Plus className="w-5 h-5" aria-hidden="true" />
+              Fahrzeug hinzufügen
+            </Link>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
