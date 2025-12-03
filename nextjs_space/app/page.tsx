@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth-options';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
-import { Car, Calendar, Route, TrendingUp, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Car, Calendar, Route, TrendingUp, AlertCircle, AlertTriangle, Wallet } from 'lucide-react';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -20,6 +20,7 @@ export default async function DashboardPage() {
   let buchungen: any[] = [];
   let offeneFahrten: any[] = [];
   let kilometerKonflikte: any[] = [];
+  let ausstehendeZahlungen: any[] = [];
   let stats = {
     totalFahrzeuge: 0,
     totalBuchungen: 0,
@@ -58,6 +59,12 @@ export default async function DashboardPage() {
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
+    const zahlungenCount = await prisma.zahlung.count({
+      where: {
+        status: 'AUSSTEHEND',
+      },
+    });
+    ausstehendeZahlungen = Array(zahlungenCount).fill(null);
   } else {
     // USER sieht eigene Fahrzeuge + eigene Buchungen + Buchungen für eigene Fahrzeuge
     fahrzeuge = await prisma.fahrzeug.findMany({
@@ -109,6 +116,17 @@ export default async function DashboardPage() {
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
+    // User sieht ausstehende Zahlungen wo er Fahrer oder Halter ist
+    const userZahlungenCount = await prisma.zahlung.count({
+      where: {
+        status: 'AUSSTEHEND',
+        OR: [
+          { fahrerId: userId },
+          { fahrzeug: { halterId: userId } },
+        ],
+      },
+    });
+    ausstehendeZahlungen = Array(userZahlungenCount).fill(null);
   }
 
   stats.offeneFahrten = offeneFahrten.length;
@@ -125,7 +143,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between">
             <div>
@@ -169,6 +187,33 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        <Link
+          href="/abrechnung"
+          className={`rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow ${
+            ausstehendeZahlungen.length === 0
+              ? 'bg-green-50 border border-green-200'
+              : 'bg-yellow-50 border border-yellow-200'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Offene Zahlungen</p>
+              <p className={`text-3xl font-bold mt-2 ${
+                ausstehendeZahlungen.length === 0 ? 'text-green-600' : 'text-yellow-600'
+              }`}>
+                {ausstehendeZahlungen.length}
+              </p>
+            </div>
+            <div className={`p-3 rounded-lg ${
+              ausstehendeZahlungen.length === 0 ? 'bg-green-100' : 'bg-yellow-100'
+            }`}>
+              <Wallet className={`w-8 h-8 ${
+                ausstehendeZahlungen.length === 0 ? 'text-green-600' : 'text-yellow-600'
+              }`} aria-hidden="true" />
+            </div>
+          </div>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
