@@ -4,14 +4,34 @@ import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Car, LayoutDashboard, CarFront, Calendar, Route, Wallet, User, LogOut, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 export function Navbar() {
   const { data: session, status } = useSession() || {};
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const userRole = (session?.user as any)?.role;
+
+  useEffect(() => {
+    if (session?.user) {
+      loadProfileImage();
+    }
+  }, [session]);
+
+  const loadProfileImage = async () => {
+    try {
+      const response = await fetch('/api/user/profile/image');
+      if (response.ok) {
+        const data = await response.json();
+        setProfileImage(data.imageUrl);
+      }
+    } catch (err) {
+      console.error('Error loading profile image:', err);
+    }
+  };
 
   // Navigation für alle eingeloggten User sichtbar
   const navigation = [
@@ -73,7 +93,20 @@ export function Navbar() {
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all"
               aria-label="Profil"
             >
-              <User className="w-4 h-4" aria-hidden="true" />
+              {profileImage ? (
+                <div className="w-6 h-6 rounded-full overflow-hidden">
+                  <Image
+                    src={profileImage}
+                    alt="Profilbild"
+                    width={24}
+                    height={24}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
+                </div>
+              ) : (
+                <User className="w-4 h-4" aria-hidden="true" />
+              )}
               {session?.user?.name ?? 'Profil'}
             </Link>
             <button
@@ -129,7 +162,20 @@ export function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all"
             >
-              <User className="w-5 h-5" aria-hidden="true" />
+              {profileImage ? (
+                <div className="w-5 h-5 rounded-full overflow-hidden">
+                  <Image
+                    src={profileImage}
+                    alt="Profilbild"
+                    width={20}
+                    height={20}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
+                </div>
+              ) : (
+                <User className="w-5 h-5" aria-hidden="true" />
+              )}
               Profil
             </Link>
             <button
