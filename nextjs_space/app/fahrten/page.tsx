@@ -367,6 +367,7 @@ export default function FahrtenPage() {
           fahrzeugId: selectedSchnellFahrzeug.id,
           startZeit: startZeit.toISOString(),
           endZeit: endZeit.toISOString(),
+          schnellbuchung: true,
         }),
       });
 

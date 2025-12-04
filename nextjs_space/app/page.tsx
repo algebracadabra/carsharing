@@ -3,8 +3,9 @@ import { authOptions } from '@/lib/auth-options';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
-import { Car, Calendar, Route, TrendingUp, AlertCircle, AlertTriangle, Wallet } from 'lucide-react';
-import { formatNumber } from '@/lib/utils';
+import { Car, Route, AlertCircle, AlertTriangle, Wallet, TrendingDown, TrendingUp } from 'lucide-react';
+import { formatNumber, formatCurrency } from '@/lib/utils';
+import { VehicleSchedule } from '@/components/vehicle-schedule';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -17,32 +18,17 @@ export default async function DashboardPage() {
   const userRole = (session.user as any)?.role;
 
   // Fetch data based on role
-  let fahrzeuge: any[] = [];
-  let buchungen: any[] = [];
   let offeneFahrten: any[] = [];
   let kilometerKonflikte: any[] = [];
   let ausstehendeZahlungen: any[] = [];
+  let meinKontostand = 0; // Was ich schulde (positiv = ich schulde, negativ = mir wird geschuldet)
+  let fahrzeugKontostaende: { fahrzeugName: string; saldo: number }[] = []; // Für Halter: Kontostände ihrer Fahrzeuge
   let stats = {
-    totalFahrzeuge: 0,
-    totalBuchungen: 0,
     offeneFahrten: 0,
   };
 
   if (userRole === 'ADMIN') {
     // Admin sieht alles
-    fahrzeuge = await prisma.fahrzeug.findMany({
-      take: 5,
-      include: { halter: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    buchungen = await prisma.buchung.findMany({
-      take: 5,
-      include: { fahrzeug: true, user: true },
-      orderBy: { startZeit: 'asc' },
-      where: { status: { in: ['GEPLANT', 'LAUFEND'] } },
-    });
-    stats.totalFahrzeuge = await prisma.fahrzeug.count();
-    stats.totalBuchungen = await prisma.buchung.count();
     offeneFahrten = await prisma.buchung.findMany({
       where: {
         status: 'ABGESCHLOSSEN',
@@ -67,33 +53,7 @@ export default async function DashboardPage() {
     });
     ausstehendeZahlungen = Array(zahlungenCount).fill(null);
   } else {
-    // USER sieht eigene Fahrzeuge + eigene Buchungen + Buchungen für eigene Fahrzeuge
-    fahrzeuge = await prisma.fahrzeug.findMany({
-      where: { halterId: userId },
-      include: { halter: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    buchungen = await prisma.buchung.findMany({
-      where: {
-        OR: [
-          { userId: userId },
-          { fahrzeug: { halterId: userId } },
-        ],
-        status: { in: ['GEPLANT', 'LAUFEND'] },
-      },
-      include: { fahrzeug: true, user: true },
-      orderBy: { startZeit: 'asc' },
-      take: 5,
-    });
-    stats.totalFahrzeuge = fahrzeuge.length;
-    stats.totalBuchungen = await prisma.buchung.count({
-      where: {
-        OR: [
-          { userId: userId },
-          { fahrzeug: { halterId: userId } },
-        ],
-      },
-    });
+    // USER sieht eigene offene Fahrten und Buchungen für eigene Fahrzeuge
     offeneFahrten = await prisma.buchung.findMany({
       where: {
         OR: [
@@ -132,6 +92,78 @@ export default async function DashboardPage() {
 
   stats.offeneFahrten = offeneFahrten.length;
 
+  // Berechne Kontostände
+  const alleFahrten = await prisma.fahrt.findMany({
+    where: userRole === 'ADMIN' 
+      ? {} 
+      : {
+          OR: [
+            { fahrerId: userId },
+            { fahrzeug: { halterId: userId } },
+          ],
+        },
+    include: { fahrzeug: { include: { halter: true } }, fahrer: true },
+  });
+
+  const alleZahlungen = await prisma.zahlung.findMany({
+    where: userRole === 'ADMIN'
+      ? { status: 'BESTAETIGT' }
+      : {
+          status: 'BESTAETIGT',
+          OR: [
+            { fahrerId: userId },
+            { fahrzeug: { halterId: userId } },
+          ],
+        },
+    include: { fahrzeug: true },
+  });
+
+  // Kontostand-Berechnung: Fahrer-Fahrzeug-Paare
+  const konten: Record<string, { fahrerId: string; fahrzeugId: string; fahrzeugName: string; halterId: string; schulden: number; zahlungen: number }> = {};
+  
+  alleFahrten.forEach((fahrt) => {
+    const key = `${fahrt.fahrerId}-${fahrt.fahrzeugId}`;
+    if (!konten[key]) {
+      konten[key] = {
+        fahrerId: fahrt.fahrerId,
+        fahrzeugId: fahrt.fahrzeugId,
+        fahrzeugName: fahrt.fahrzeug.name,
+        halterId: fahrt.fahrzeug.halterId,
+        schulden: 0,
+        zahlungen: 0,
+      };
+    }
+    konten[key].schulden += fahrt.kosten ?? 0;
+  });
+
+  alleZahlungen.forEach((zahlung) => {
+    const key = `${zahlung.fahrerId}-${zahlung.fahrzeugId}`;
+    if (konten[key]) {
+      konten[key].zahlungen += zahlung.betrag ?? 0;
+    }
+  });
+
+  // Mein Kontostand: Summe aller Salden wo ich Fahrer bin
+  Object.values(konten).forEach((konto) => {
+    const saldo = konto.schulden - konto.zahlungen;
+    if (konto.fahrerId === userId) {
+      meinKontostand += saldo;
+    }
+  });
+
+  // Fahrzeug-Kontostände: Für Halter - was ihnen geschuldet wird
+  const fahrzeugSalden: Record<string, { fahrzeugName: string; saldo: number }> = {};
+  Object.values(konten).forEach((konto) => {
+    if (konto.halterId === userId && konto.fahrerId !== userId) {
+      const saldo = konto.schulden - konto.zahlungen;
+      if (!fahrzeugSalden[konto.fahrzeugId]) {
+        fahrzeugSalden[konto.fahrzeugId] = { fahrzeugName: konto.fahrzeugName, saldo: 0 };
+      }
+      fahrzeugSalden[konto.fahrzeugId].saldo += saldo;
+    }
+  });
+  fahrzeugKontostaende = Object.values(fahrzeugSalden).filter(f => Math.abs(f.saldo) > 0.01);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
@@ -144,181 +176,112 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Meine Fahrzeuge</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
-                {stats.totalFahrzeuge}
-              </p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <Car className="w-8 h-8 text-blue-600" aria-hidden="true" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Buchungen
-              </p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
-                {stats.totalBuchungen}
-              </p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <Calendar className="w-8 h-8 text-green-600" aria-hidden="true" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Offene Fahrten</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
-                {stats.offeneFahrten}
-              </p>
-            </div>
-            <div className="bg-orange-100 p-3 rounded-lg">
-              <Route className="w-8 h-8 text-orange-600" aria-hidden="true" />
-            </div>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Mein Kontostand */}
         <Link
           href="/abrechnung"
           className={`rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow ${
-            ausstehendeZahlungen.length === 0
+            meinKontostand <= 0
               ? 'bg-green-50 border border-green-200'
-              : 'bg-yellow-50 border border-yellow-200'
+              : 'bg-red-50 border border-red-200'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Offene Zahlungen</p>
-              <p className={`text-3xl font-bold mt-2 ${
-                ausstehendeZahlungen.length === 0 ? 'text-green-600' : 'text-yellow-600'
+              <p className="text-sm font-medium text-gray-600">Mein Kontostand</p>
+              <p className={`text-2xl font-bold mt-2 ${
+                meinKontostand <= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {ausstehendeZahlungen.length}
+                {meinKontostand > 0 ? '-' : ''}{formatCurrency(Math.abs(meinKontostand))} €
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {meinKontostand > 0 ? 'Offen' : 'Ausgeglichen'}
               </p>
             </div>
             <div className={`p-3 rounded-lg ${
-              ausstehendeZahlungen.length === 0 ? 'bg-green-100' : 'bg-yellow-100'
+              meinKontostand <= 0 ? 'bg-green-100' : 'bg-red-100'
             }`}>
-              <Wallet className={`w-8 h-8 ${
-                ausstehendeZahlungen.length === 0 ? 'text-green-600' : 'text-yellow-600'
-              }`} aria-hidden="true" />
+              {meinKontostand > 0 ? (
+                <TrendingDown className={`w-8 h-8 text-red-600`} aria-hidden="true" />
+              ) : (
+                <TrendingUp className={`w-8 h-8 text-green-600`} aria-hidden="true" />
+              )}
             </div>
           </div>
         </Link>
+
+        {/* Fahrzeug-Einnahmen (nur für Halter) */}
+        {fahrzeugKontostaende.length > 0 && (
+          <Link
+            href="/abrechnung"
+            className="bg-blue-50 border border-blue-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Fahrzeug-Einnahmen</p>
+                <p className="text-2xl font-bold text-blue-600 mt-2">
+                  +{formatCurrency(fahrzeugKontostaende.reduce((sum, f) => sum + f.saldo, 0))} €
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {fahrzeugKontostaende.length} Fahrzeug{fahrzeugKontostaende.length > 1 ? 'e' : ''}
+                </p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <Car className="w-8 h-8 text-blue-600" aria-hidden="true" />
+              </div>
+            </div>
+          </Link>
+        )}
+
+        {/* Offene Fahrten */}
+        {stats.offeneFahrten > 0 && (
+          <Link
+            href="/fahrten"
+            className="bg-orange-50 border border-orange-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Offene Fahrten</p>
+                <p className="text-3xl font-bold text-orange-600 mt-2">
+                  {stats.offeneFahrten}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Noch zu erfassen</p>
+              </div>
+              <div className="bg-orange-100 p-3 rounded-lg">
+                <Route className="w-8 h-8 text-orange-600" aria-hidden="true" />
+              </div>
+            </div>
+          </Link>
+        )}
+
+        {/* Offene Zahlungen */}
+        {ausstehendeZahlungen.length > 0 && (
+          <Link
+            href="/abrechnung"
+            className="bg-yellow-50 border border-yellow-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Offene Zahlungen</p>
+                <p className="text-3xl font-bold text-yellow-600 mt-2">
+                  {ausstehendeZahlungen.length}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Zu bestätigen</p>
+              </div>
+              <div className="bg-yellow-100 p-3 rounded-lg">
+                <Wallet className="w-8 h-8 text-yellow-600" aria-hidden="true" />
+              </div>
+            </div>
+          </Link>
+        )}
+      </div>
+
+      {/* Belegungsübersicht - 3 Tage */}
+      <div className="mb-8">
+        <VehicleSchedule daysCount={3} compact />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Meine Fahrzeuge */}
-        {fahrzeuge.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Meine Fahrzeuge</h2>
-              <Link
-                href="/fahrzeuge"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Alle anzeigen
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {fahrzeuge?.slice?.(0, 5)?.map?.((fahrzeug: any) => (
-                <Link
-                  key={fahrzeug?.id}
-                  href={`/fahrzeuge/${fahrzeug?.id}`}
-                  className="flex items-center gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
-                >
-                  <div className="bg-blue-100 p-3 rounded-lg">
-                    <Car className="w-6 h-6 text-blue-600" aria-hidden="true" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{fahrzeug?.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      {formatNumber(fahrzeug?.kilometerstand)} km
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span
-                      className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        fahrzeug?.status === 'VERFUEGBAR'
-                          ? 'bg-green-100 text-green-700'
-                          : fahrzeug?.status === 'IN_WARTUNG'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}
-                    >
-                      {fahrzeug?.status === 'VERFUEGBAR'
-                        ? 'Verfügbar'
-                        : fahrzeug?.status === 'IN_WARTUNG'
-                        ? 'In Wartung'
-                        : 'Außer Betrieb'}
-                    </span>
-                  </div>
-                </Link>
-              )) ?? null}
-            </div>
-          </div>
-        )}
-
-        {/* Anstehende Buchungen */}
-        {buchungen.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Anstehende Buchungen</h2>
-              <Link
-                href="/buchungen"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Alle anzeigen
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {buchungen?.slice?.(0, 5)?.map?.((buchung: any) => (
-                <div
-                  key={buchung?.id}
-                  className="flex items-center gap-4 p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="bg-green-100 p-3 rounded-lg">
-                    <Calendar className="w-6 h-6 text-green-600" aria-hidden="true" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{buchung?.fahrzeug?.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      {new Date(buchung?.startZeit)?.toLocaleDateString?.('de-DE', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                      }) ?? ''}{' '}
-                      {new Date(buchung?.startZeit)?.toLocaleTimeString?.('de-DE', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }) ?? ''}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      buchung?.status === 'GEPLANT'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-purple-100 text-purple-700'
-                    }`}
-                  >
-                    {buchung?.status === 'GEPLANT' ? 'Geplant' : 'Laufend'}
-                  </span>
-                </div>
-              )) ?? null}
-            </div>
-          </div>
-        )}
-
         {/* Offene Fahrten */}
         {offeneFahrten.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-6 lg:col-span-2">

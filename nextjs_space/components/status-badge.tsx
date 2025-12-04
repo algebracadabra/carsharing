@@ -18,6 +18,7 @@ import {
 
 const FAHRZEUG_STATUS_STYLES: Record<FahrzeugStatus, string> = {
   VERFUEGBAR: 'bg-green-100 text-green-700',
+  NUR_NOTFALL: 'bg-amber-100 text-amber-700',
   IN_WARTUNG: 'bg-yellow-100 text-yellow-700',
   AUSSER_BETRIEB: 'bg-red-100 text-red-700',
 };

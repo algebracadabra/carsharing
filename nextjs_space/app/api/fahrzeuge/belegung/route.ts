@@ -7,10 +7,15 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { user, error } = await requireAuth();
     if (error) return error;
+
+    // Get days parameter from query string (default: 7)
+    const { searchParams } = new URL(request.url);
+    const daysParam = searchParams.get('days');
+    const days = Math.min(Math.max(parseInt(daysParam || '7', 10) || 7, 1), 30); // Clamp between 1 and 30
 
     // Get all vehicles the user can see
     let fahrzeuge;
@@ -27,11 +32,11 @@ export async function GET() {
       });
     }
 
-    // Calculate date range: today to 7 days from now
+    // Calculate date range: today to N days from now
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 7);
+    endDate.setDate(endDate.getDate() + days);
     endDate.setHours(23, 59, 59, 999);
 
     // Get all bookings in this time range

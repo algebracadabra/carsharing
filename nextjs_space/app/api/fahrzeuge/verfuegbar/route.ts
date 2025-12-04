@@ -33,6 +33,7 @@ export async function GET(request: Request) {
     }
 
     // Find all vehicles that are VERFUEGBAR and don't have overlapping bookings
+    // NUR_NOTFALL vehicles are excluded - they can only be booked via Schnellbuchung
     const fahrzeuge = await prisma.fahrzeug.findMany({
       where: {
         status: 'VERFUEGBAR',

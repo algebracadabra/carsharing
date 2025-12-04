@@ -30,7 +30,15 @@ interface BelegungData {
 
 const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
-export function VehicleSchedule() {
+interface VehicleScheduleProps {
+  daysCount?: number;
+  showTitle?: boolean;
+  compact?: boolean;
+  showDaysSelector?: boolean;
+}
+
+export function VehicleSchedule({ daysCount: initialDaysCount = 7, showTitle = true, compact = false, showDaysSelector = false }: VehicleScheduleProps) {
+  const [daysCount, setDaysCount] = useState(initialDaysCount);
   const [data, setData] = useState<BelegungData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,12 +52,12 @@ export function VehicleSchedule() {
     }, 30000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [daysCount]); // Refetch when daysCount changes
 
   const fetchBelegung = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/fahrzeuge/belegung');
+      const response = await fetch(`/api/fahrzeuge/belegung?days=${daysCount}`);
       if (response.ok) {
         const result = await response.json();
         setData(result);
@@ -84,11 +92,11 @@ export function VehicleSchedule() {
     );
   }
 
-  // Generate array of 7 days starting from today
+  // Generate array of days starting from today
   const days: Date[] = [];
   const startDate = new Date();
   startDate.setHours(0, 0, 0, 0);
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < daysCount; i++) {
     const day = new Date(startDate);
     day.setDate(startDate.getDate() + i);
     days.push(day);
@@ -148,24 +156,60 @@ export function VehicleSchedule() {
     );
   };
 
+  // Dynamic grid columns using inline style (Tailwind can't handle dynamic class names)
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: compact 
+      ? `120px repeat(${daysCount}, 1fr)`
+      : `180px repeat(${daysCount}, 1fr)`,
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="p-4 border-b border-gray-200 flex items-center gap-2">
-        <Calendar className="w-5 h-5 text-blue-500" />
-        <h2 className="text-lg font-semibold text-gray-900">Belegungsübersicht</h2>
-        <span className="text-sm text-gray-500 ml-2">Nächste 7 Tage</span>
-      </div>
+    <div className={cn(
+      "bg-white rounded-lg shadow-md overflow-hidden",
+      compact && "shadow-sm"
+    )}>
+      {showTitle && (
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-500" />
+            <h2 className="text-lg font-semibold text-gray-900">Belegungsübersicht</h2>
+            <span className="text-sm text-gray-500 ml-2">Nächste {daysCount} Tage</span>
+          </div>
+          {showDaysSelector && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500">Tage:</span>
+              <div className="flex items-center gap-1">
+                {[3, 7, 14, 21].map((days) => (
+                  <button
+                    key={days}
+                    onClick={() => setDaysCount(days)}
+                    className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                      daysCount === days
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {days}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="overflow-x-auto">
-        <div className="min-w-[600px]">
+        <div className={compact ? "min-w-[400px]" : "min-w-[600px]"}>
           {/* Header row with days */}
-          <div className="grid grid-cols-[180px_repeat(7,1fr)] border-b border-gray-200 bg-gray-50">
-            <div className="p-3 font-medium text-gray-700 text-sm">Fahrzeug</div>
+          <div className="border-b border-gray-200 bg-gray-50" style={gridStyle}>
+            <div className={cn("font-medium text-gray-700 text-sm", compact ? "p-2" : "p-3")}>Fahrzeug</div>
             {days.map((day, idx) => (
               <div
                 key={idx}
                 className={cn(
-                  'p-2 text-center border-l border-gray-200',
+                  'text-center border-l border-gray-200',
+                  compact ? 'p-1.5' : 'p-2',
                   isToday(day) && 'bg-blue-50'
                 )}
               >
@@ -176,7 +220,8 @@ export function VehicleSchedule() {
                   {WEEKDAYS[day.getDay()]}
                 </div>
                 <div className={cn(
-                  'text-sm font-semibold',
+                  compact ? 'text-xs' : 'text-sm',
+                  'font-semibold',
                   isToday(day) ? 'text-blue-700' : 'text-gray-900'
                 )}>
                   {formatDate(day)}
@@ -194,9 +239,13 @@ export function VehicleSchedule() {
             data.fahrzeuge.map((fahrzeug) => (
               <div
                 key={fahrzeug.id}
-                className="grid grid-cols-[180px_repeat(7,1fr)] border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                style={gridStyle}
               >
-                <div className="p-3 font-medium text-gray-900 text-sm truncate flex items-center">
+                <div className={cn(
+                  "font-medium text-gray-900 text-sm truncate flex items-center",
+                  compact ? "p-2" : "p-3"
+                )}>
                   {fahrzeug.name}
                 </div>
                 {days.map((day, dayIdx) => {
@@ -205,7 +254,8 @@ export function VehicleSchedule() {
                     <div
                       key={dayIdx}
                       className={cn(
-                        'relative h-12 border-l border-gray-200',
+                        'relative border-l border-gray-200',
+                        compact ? 'h-10' : 'h-12',
                         isToday(day) && 'bg-blue-50/50'
                       )}
                     >
@@ -239,7 +289,10 @@ export function VehicleSchedule() {
       </div>
 
       {/* Legend */}
-      <div className="p-3 border-t border-gray-200 bg-gray-50 flex items-center gap-4 text-xs">
+      <div className={cn(
+        "border-t border-gray-200 bg-gray-50 flex items-center gap-4 text-xs",
+        compact ? "p-2" : "p-3"
+      )}>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
           <span className="text-gray-600">Geplant</span>

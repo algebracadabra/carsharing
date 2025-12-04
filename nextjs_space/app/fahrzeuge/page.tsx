@@ -81,7 +81,7 @@ export default function FahrzeugePage() {
 
       {/* Belegungsübersicht */}
       <div className="mb-8">
-        <VehicleSchedule />
+        <VehicleSchedule showDaysSelector />
       </div>
 
       {fahrzeuge.length === 0 ? (

@@ -4,7 +4,7 @@
 
 export type UserRole = 'USER' | 'ADMIN';
 
-export type FahrzeugStatus = 'VERFUEGBAR' | 'IN_WARTUNG' | 'AUSSER_BETRIEB';
+export type FahrzeugStatus = 'VERFUEGBAR' | 'IN_WARTUNG' | 'AUSSER_BETRIEB' | 'NUR_NOTFALL';
 
 export type BuchungStatus = 'GEPLANT' | 'LAUFEND' | 'ABGESCHLOSSEN' | 'STORNIERT';
 
@@ -132,6 +132,7 @@ export const FAHRZEUG_STATUS_LABELS: Record<FahrzeugStatus, string> = {
   VERFUEGBAR: 'Verfügbar',
   IN_WARTUNG: 'In Wartung',
   AUSSER_BETRIEB: 'Außer Betrieb',
+  NUR_NOTFALL: 'Notfallfahrzeug',
 };
 
 export const BUCHUNG_STATUS_LABELS: Record<BuchungStatus, string> = {

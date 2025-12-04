@@ -48,10 +48,28 @@ export async function POST(request: Request) {
     if (error) return error;
 
     const body = await request.json();
-    const { fahrzeugId, startZeit, endZeit } = body;
+    const { fahrzeugId, startZeit, endZeit, schnellbuchung } = body;
 
     if (!fahrzeugId || !startZeit || !endZeit) {
       return errorResponse('Alle Felder sind erforderlich');
+    }
+
+    // Check if vehicle exists and is available for booking
+    const fahrzeug = await prisma.fahrzeug.findUnique({
+      where: { id: fahrzeugId },
+    });
+
+    if (!fahrzeug) {
+      return errorResponse('Fahrzeug nicht gefunden');
+    }
+
+    // NUR_NOTFALL vehicles can only be booked via Schnellbuchung
+    if (fahrzeug.status === 'NUR_NOTFALL' && !schnellbuchung) {
+      return errorResponse('Dieses Notfallfahrzeug kann nur über Schnellbuchung gebucht werden');
+    }
+
+    if (fahrzeug.status !== 'VERFUEGBAR' && fahrzeug.status !== 'NUR_NOTFALL') {
+      return errorResponse('Dieses Fahrzeug ist derzeit nicht verfügbar');
     }
 
     // Validate: end must be after start

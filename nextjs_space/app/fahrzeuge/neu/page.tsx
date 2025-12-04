@@ -253,6 +253,7 @@ export default function NeuFahrzeugPage() {
               aria-required="true"
             >
               <option value="VERFUEGBAR">Verfügbar</option>
+              <option value="NUR_NOTFALL">Notfallfahrzeug</option>
               <option value="IN_WARTUNG">In Wartung</option>
               <option value="AUSSER_BETRIEB">Außer Betrieb</option>
             </select>

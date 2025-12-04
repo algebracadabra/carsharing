@@ -17,6 +17,7 @@ enum FahrzeugStatus {
   VERFUEGBAR
   IN_WARTUNG
   AUSSER_BETRIEB
+  NUR_NOTFALL
 }
 
 enum BuchungStatus {
