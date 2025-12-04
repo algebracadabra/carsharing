@@ -14,6 +14,9 @@ export default function BuchungenPage() {
   const router = useRouter();
   const [buchungen, setBuchungen] = useState<BuchungWithRelations[]>([]);
   const [fahrzeuge, setFahrzeuge] = useState<Fahrzeug[]>([]);
+  const [verfuegbareFahrzeuge, setVerfuegbareFahrzeuge] = useState<Fahrzeug[]>([]);
+  const [loadingFahrzeuge, setLoadingFahrzeuge] = useState(false);
+  const [zeitraumGewaehlt, setZeitraumGewaehlt] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -62,6 +65,43 @@ export default function BuchungenPage() {
     }
   };
 
+  const fetchVerfuegbareFahrzeuge = async () => {
+    if (!formData.startDatum || !formData.endDatum) {
+      setError('Bitte wählen Sie Start- und Enddatum');
+      return;
+    }
+
+    const startZeit = new Date(`${formData.startDatum}T${formData.startStunde.padStart(2, '0')}:00:00`);
+    const endZeit = new Date(`${formData.endDatum}T${formData.endStunde.padStart(2, '0')}:00:00`);
+
+    if (endZeit <= startZeit) {
+      setError('Endzeit muss nach der Startzeit liegen');
+      return;
+    }
+
+    setError('');
+    setLoadingFahrzeuge(true);
+
+    try {
+      const response = await fetch(
+        `/api/fahrzeuge/verfuegbar?startZeit=${startZeit.toISOString()}&endZeit=${endZeit.toISOString()}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setVerfuegbareFahrzeuge(data ?? []);
+        setZeitraumGewaehlt(true);
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Fehler beim Laden der Fahrzeuge');
+      }
+    } catch (err: any) {
+      setError('Fehler beim Laden der Fahrzeuge');
+    } finally {
+      setLoadingFahrzeuge(false);
+    }
+  };
+
   const handleCreateBuchung = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -94,6 +134,8 @@ export default function BuchungenPage() {
 
       setShowModal(false);
       setFormData({ fahrzeugId: '', startDatum: '', startStunde: '8', endDatum: '', endStunde: '17' });
+      setZeitraumGewaehlt(false);
+      setVerfuegbareFahrzeuge([]);
       fetchData();
     } catch (err: any) {
       setError(err.message);
@@ -253,6 +295,9 @@ export default function BuchungenPage() {
                 onClick={() => {
                   setShowModal(false);
                   setError('');
+                  setZeitraumGewaehlt(false);
+                  setVerfuegbareFahrzeuge([]);
+                  setFormData({ fahrzeugId: '', startDatum: '', startStunde: '8', endDatum: '', endStunde: '17' });
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
                 aria-label="Schließen"
@@ -264,89 +309,140 @@ export default function BuchungenPage() {
             {error && <ErrorAlert message={error} icon={AlertCircle} className="mb-6" />}
 
             <form onSubmit={handleCreateBuchung} className="space-y-4">
-              <div>
-                <label htmlFor="fahrzeug" className="block text-sm font-medium text-gray-700 mb-2">
-                  Fahrzeug *
-                </label>
-                <select
-                  id="fahrzeug"
-                  value={formData.fahrzeugId}
-                  onChange={(e) => setFormData({ ...formData, fahrzeugId: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  aria-required="true"
-                >
-                  <option value="">Fahrzeug auswählen</option>
-                  {fahrzeuge?.filter?.(f => f?.status === 'VERFUEGBAR')?.map?.((f: any) => (
-                    <option key={f?.id} value={f?.id}>
-                      {f?.name}
-                    </option>
-                  )) ?? null}
-                </select>
+              {/* Schritt 1: Zeitraum wählen */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`w-6 h-6 rounded-full ${zeitraumGewaehlt ? 'bg-green-500' : 'bg-blue-500'} text-white flex items-center justify-center text-sm font-bold`}>
+                  {zeitraumGewaehlt ? '✓' : '1'}
+                </div>
+                <span className="font-medium text-gray-700">Zeitraum wählen</span>
+                {zeitraumGewaehlt && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setZeitraumGewaehlt(false);
+                      setVerfuegbareFahrzeuge([]);
+                      setFormData({ ...formData, fahrzeugId: '' });
+                    }}
+                    className="ml-auto text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Ändern
+                  </button>
+                )}
+              </div>
+              <div className={zeitraumGewaehlt ? 'opacity-60 pointer-events-none' : ''}>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Startzeit *
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="startDatum"
+                      type="date"
+                      value={formData.startDatum}
+                      onChange={(e) => setFormData({ ...formData, startDatum: e.target.value })}
+                      required
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      aria-required="true"
+                    />
+                    <select
+                      id="startStunde"
+                      value={formData.startStunde}
+                      onChange={(e) => setFormData({ ...formData, startStunde: e.target.value })}
+                      required
+                      className="w-24 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      aria-label="Startstunde"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Endzeit *
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="endDatum"
+                      type="date"
+                      value={formData.endDatum}
+                      onChange={(e) => setFormData({ ...formData, endDatum: e.target.value })}
+                      required
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      aria-required="true"
+                    />
+                    <select
+                      id="endStunde"
+                      value={formData.endStunde}
+                      onChange={(e) => setFormData({ ...formData, endStunde: e.target.value })}
+                      required
+                      className="w-24 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      aria-label="Endstunde"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {!zeitraumGewaehlt && (
+                  <button
+                    type="button"
+                    onClick={fetchVerfuegbareFahrzeuge}
+                    disabled={loadingFahrzeuge || !formData.startDatum || !formData.endDatum}
+                    className="w-full mt-3 bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  >
+                    {loadingFahrzeuge ? 'Suche...' : 'Verfügbare Fahrzeuge suchen'}
+                  </button>
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Startzeit *
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="startDatum"
-                    type="date"
-                    value={formData.startDatum}
-                    onChange={(e) => setFormData({ ...formData, startDatum: e.target.value })}
-                    required
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    aria-required="true"
-                  />
-                  <select
-                    id="startStunde"
-                    value={formData.startStunde}
-                    onChange={(e) => setFormData({ ...formData, startStunde: e.target.value })}
-                    required
-                    className="w-24 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    aria-label="Startstunde"
-                  >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                    ))}
-                  </select>
+              {/* Schritt 2: Fahrzeug wählen */}
+              {zeitraumGewaehlt && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold">
+                      2
+                    </div>
+                    <span className="font-medium text-gray-700">Fahrzeug wählen</span>
+                  </div>
+                  {verfuegbareFahrzeuge.length === 0 ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800 text-sm">
+                      <AlertCircle className="w-4 h-4 inline-block mr-2" />
+                      Keine Fahrzeuge in diesem Zeitraum verfügbar.
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500 mb-2">
+                        {verfuegbareFahrzeuge.length} Fahrzeug{verfuegbareFahrzeuge.length !== 1 ? 'e' : ''} verfügbar
+                      </p>
+                      <select
+                        id="fahrzeug"
+                        value={formData.fahrzeugId}
+                        onChange={(e) => setFormData({ ...formData, fahrzeugId: e.target.value })}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        aria-required="true"
+                      >
+                        <option value="">Fahrzeug auswählen</option>
+                        {verfuegbareFahrzeuge.map((f: any) => (
+                          <option key={f?.id} value={f?.id}>
+                            {f?.name}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Endzeit *
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="endDatum"
-                    type="date"
-                    value={formData.endDatum}
-                    onChange={(e) => setFormData({ ...formData, endDatum: e.target.value })}
-                    required
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    aria-required="true"
-                  />
-                  <select
-                    id="endStunde"
-                    value={formData.endStunde}
-                    onChange={(e) => setFormData({ ...formData, endStunde: e.target.value })}
-                    required
-                    className="w-24 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    aria-label="Endstunde"
-                  >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  disabled={creating}
+                  disabled={creating || !zeitraumGewaehlt || !formData.fahrzeugId}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
                   aria-label="Buchung erstellen"
                 >
@@ -357,6 +453,9 @@ export default function BuchungenPage() {
                   onClick={() => {
                     setShowModal(false);
                     setError('');
+                    setZeitraumGewaehlt(false);
+                    setVerfuegbareFahrzeuge([]);
+                    setFormData({ fahrzeugId: '', startDatum: '', startStunde: '8', endDatum: '', endStunde: '17' });
                   }}
                   className="px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
                 >
