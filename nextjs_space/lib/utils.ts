@@ -24,3 +24,39 @@ export function formatCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return '0,00';
   return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+// ============================================
+// Date Formatting Utilities
+// ============================================
+
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+};
+
+const TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  hour: '2-digit',
+  minute: '2-digit',
+};
+
+// Formatiert ein Datum im deutschen Format (TT.MM.JJJJ)
+export function formatDate(date: Date | string | null | undefined): string {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString('de-DE', DATE_OPTIONS);
+}
+
+// Formatiert eine Uhrzeit im deutschen Format (HH:MM)
+export function formatTime(date: Date | string | null | undefined): string {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleTimeString('de-DE', TIME_OPTIONS);
+}
+
+// Formatiert Datum und Uhrzeit (TT.MM.JJJJ HH:MM)
+export function formatDateTime(date: Date | string | null | undefined): string {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleString('de-DE', { ...DATE_OPTIONS, ...TIME_OPTIONS });
+}

@@ -7,24 +7,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Car, Plus, MapPin, TrendingUp, Settings } from 'lucide-react';
 import { formatNumber, formatCurrency } from '@/lib/utils';
-
-interface Fahrzeug {
-  id: string;
-  name: string;
-  foto: string | null;
-  kilometerstand: number;
-  kilometerpauschale: number;
-  schluesselablageort: string;
-  status: string;
-  halter: {
-    name: string | null;
-  };
-}
+import { FahrzeugStatusBadge } from '@/components/status-badge';
+import { LoadingState, EmptyState, PageContainer, PageHeader } from '@/components/page-states';
+import type { FahrzeugWithHalter, SessionUser } from '@/lib/types';
 
 export default function FahrzeugePage() {
   const { data: session, status } = useSession() || {};
   const router = useRouter();
-  const [fahrzeuge, setFahrzeuge] = useState<Fahrzeug[]>([]);
+  const [fahrzeuge, setFahrzeuge] = useState<FahrzeugWithHalter[]>([]);
   const [loading, setLoading] = useState(true);
   const [fotoUrls, setFotoUrls] = useState<{ [key: string]: string }>({});
 
@@ -66,44 +56,34 @@ export default function FahrzeugePage() {
   };
 
   if (status === 'loading' || loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">Laden...</div>
-      </div>
-    );
+    return <LoadingState />;
   }
 
+  const addButton = userRole === 'ADMIN' ? (
+    <Link
+      href="/fahrzeuge/neu"
+      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
+      aria-label="Neues Fahrzeug hinzufügen"
+    >
+      <Plus className="w-5 h-5" aria-hidden="true" />
+      Fahrzeug hinzufügen
+    </Link>
+  ) : null;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Fahrzeuge</h1>
-          <p className="text-gray-600">Verwalten Sie alle verfügbaren Fahrzeuge</p>
-        </div>
-        {userRole === 'ADMIN' && (
-          <Link
-            href="/fahrzeuge/neu"
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
-            aria-label="Neues Fahrzeug hinzufügen"
-          >
-            <Plus className="w-5 h-5" aria-hidden="true" />
-            Fahrzeug hinzufügen
-          </Link>
-        )}
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Fahrzeuge"
+        description="Verwalten Sie alle verfügbaren Fahrzeuge"
+        action={addButton}
+      />
 
       {fahrzeuge.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Car className="w-8 h-8 text-gray-400" aria-hidden="true" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Noch keine Fahrzeuge vorhanden
-          </h3>
-          <p className="text-gray-600 mb-4">
-            {userRole === 'ADMIN' ? 'Fügen Sie Ihr erstes Fahrzeug hinzu' : 'Es sind noch keine Fahrzeuge verfügbar'}
-          </p>
-          {userRole === 'ADMIN' && (
+        <EmptyState
+          icon={Car}
+          title="Noch keine Fahrzeuge vorhanden"
+          description={userRole === 'ADMIN' ? 'Fügen Sie Ihr erstes Fahrzeug hinzu' : 'Es sind noch keine Fahrzeuge verfügbar'}
+          action={userRole === 'ADMIN' ? (
             <Link
               href="/fahrzeuge/neu"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
@@ -111,8 +91,8 @@ export default function FahrzeugePage() {
               <Plus className="w-5 h-5" aria-hidden="true" />
               Fahrzeug hinzufügen
             </Link>
-          )}
-        </div>
+          ) : undefined}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {fahrzeuge?.map?.((fahrzeug) => (
@@ -136,21 +116,7 @@ export default function FahrzeugePage() {
                   </div>
                 )}
                 <div className="absolute top-3 right-3">
-                  <span
-                    className={`text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm ${
-                      fahrzeug?.status === 'VERFUEGBAR'
-                        ? 'bg-green-100/90 text-green-700'
-                        : fahrzeug?.status === 'IN_WARTUNG'
-                        ? 'bg-yellow-100/90 text-yellow-700'
-                        : 'bg-red-100/90 text-red-700'
-                    }`}
-                  >
-                    {fahrzeug?.status === 'VERFUEGBAR'
-                      ? 'Verfügbar'
-                      : fahrzeug?.status === 'IN_WARTUNG'
-                      ? 'In Wartung'
-                      : 'Außer Betrieb'}
-                  </span>
+                  <FahrzeugStatusBadge status={fahrzeug.status} className="backdrop-blur-sm" />
                 </div>
               </div>
               <div className="p-5">
@@ -184,6 +150,6 @@ export default function FahrzeugePage() {
           )) ?? null}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

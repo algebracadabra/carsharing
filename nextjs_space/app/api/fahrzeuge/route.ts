@@ -1,107 +1,81 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import {
+  jsonResponse,
+  errorResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  serverErrorResponse,
+  requireAuth,
+  requireAdmin,
+  parseIntSafe,
+  parseFloatSafe,
+} from '@/lib/api-utils';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const { user, error } = await requireAuth();
+    if (error) return error;
 
-    if (!session) {
-      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
-    }
+    // All authenticated users can see all vehicles
+    const fahrzeuge = await prisma.fahrzeug.findMany({
+      include: { halter: true },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    const userId = (session.user as any)?.id;
-    const userRole = (session.user as any)?.role;
-
-    let fahrzeuge;
-
-    if (userRole === 'ADMIN') {
-      fahrzeuge = await prisma.fahrzeug.findMany({
-        include: { halter: true },
-        orderBy: { createdAt: 'desc' },
-      });
-    } else {
-      // HALTER and FAHRER see all available vehicles
-      fahrzeuge = await prisma.fahrzeug.findMany({
-        include: { halter: true },
-        orderBy: { createdAt: 'desc' },
-      });
-    }
-
-    return NextResponse.json(fahrzeuge);
-  } catch (error: any) {
+    return jsonResponse(fahrzeuge);
+  } catch (error) {
     console.error('Get fahrzeuge error:', error);
-    return NextResponse.json({ error: 'Fehler beim Laden' }, { status: 500 });
+    return serverErrorResponse('Fehler beim Laden');
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
-    }
-
-    const userRole = (session.user as any)?.role;
-
-    // Nur ADMIN darf Fahrzeuge erstellen
-    if (userRole !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Nur Administratoren können Fahrzeuge erstellen' },
-        { status: 403 }
-      );
-    }
+    const { user, error } = await requireAdmin();
+    if (error) return error;
 
     const body = await request.json();
-    const {
-      name,
-      foto,
-      kilometerstand,
-      kilometerpauschale,
-      schluesselablageort,
-      status,
-      halterId,
-    } = body;
+    const { name, foto, kilometerstand, kilometerpauschale, schluesselablageort, status, halterId } = body;
 
+    // Validate required fields
     if (!name || kilometerstand === undefined || !kilometerpauschale || !schluesselablageort || !halterId) {
-      return NextResponse.json(
-        { error: 'Alle Pflichtfelder müssen ausgefüllt werden (inkl. Halter)' },
-        { status: 400 }
-      );
+      return errorResponse('Alle Pflichtfelder müssen ausgefüllt werden (inkl. Halter)');
     }
 
-    // Prüfen ob der Halter existiert
+    // Validate halter exists
     const halter = await prisma.user.findUnique({
       where: { id: halterId },
     });
 
     if (!halter) {
-      return NextResponse.json(
-        { error: 'Der ausgewählte Halter existiert nicht' },
-        { status: 400 }
-      );
+      return errorResponse('Der ausgewählte Halter existiert nicht');
+    }
+
+    const parsedKilometerstand = parseIntSafe(kilometerstand);
+    const parsedKilometerpauschale = parseFloatSafe(kilometerpauschale);
+
+    if (parsedKilometerstand === null || parsedKilometerpauschale === null) {
+      return errorResponse('Ungültige Zahlenwerte');
     }
 
     const fahrzeug = await prisma.fahrzeug.create({
       data: {
         name,
         foto: foto || null,
-        kilometerstand: parseInt(kilometerstand),
-        kilometerpauschale: parseFloat(kilometerpauschale),
+        kilometerstand: parsedKilometerstand,
+        kilometerpauschale: parsedKilometerpauschale,
         schluesselablageort,
         status: status || 'VERFUEGBAR',
-        halterId: halterId,
+        halterId,
       },
       include: { halter: true },
     });
 
-    return NextResponse.json(fahrzeug, { status: 201 });
-  } catch (error: any) {
+    return jsonResponse(fahrzeug, 201);
+  } catch (error) {
     console.error('Create fahrzeug error:', error);
-    return NextResponse.json({ error: 'Fehler beim Erstellen' }, { status: 500 });
+    return serverErrorResponse('Fehler beim Erstellen');
   }
 }

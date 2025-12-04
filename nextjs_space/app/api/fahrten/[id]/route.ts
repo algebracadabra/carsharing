@@ -1,7 +1,13 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import {
+  jsonResponse,
+  errorResponse,
+  forbiddenResponse,
+  notFoundResponse,
+  serverErrorResponse,
+  requireAuth,
+  parseIntSafe,
+} from '@/lib/api-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,12 +17,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
-    }
+    const { user, error } = await requireAuth();
+    if (error) return error;
 
-    const userId = (session.user as any)?.id;
     const fahrtId = params.id;
     const body = await request.json();
     const { startKilometer, endKilometer, bemerkungen, action } = body;
@@ -28,34 +31,24 @@ export async function PUT(
     });
 
     if (!existingFahrt) {
-      return NextResponse.json({ error: 'Fahrt nicht gefunden' }, { status: 404 });
+      return notFoundResponse('Fahrt nicht gefunden');
     }
 
     // Check if user is the creator of the trip
-    if (existingFahrt.fahrerId !== userId) {
-      return NextResponse.json(
-        { error: 'Sie können nur Ihre eigenen Fahrten bearbeiten' },
-        { status: 403 }
-      );
+    if (existingFahrt.fahrerId !== user!.id) {
+      return forbiddenResponse('Sie können nur Ihre eigenen Fahrten bearbeiten');
     }
 
     // Action: complete - Fahrt abschließen (nur endKilometer erforderlich)
     if (action === 'complete') {
-      if (endKilometer === undefined) {
-        return NextResponse.json(
-          { error: 'Endkilometer ist erforderlich' },
-          { status: 400 }
-        );
+      const end = parseIntSafe(endKilometer);
+      if (end === null) {
+        return errorResponse('Endkilometer ist erforderlich');
       }
 
       const start = existingFahrt.startKilometer;
-      const end = parseInt(endKilometer);
-
       if (start >= end) {
-        return NextResponse.json(
-          { error: 'Endkilometer muss größer als Startkilometer sein' },
-          { status: 400 }
-        );
+        return errorResponse('Endkilometer muss größer als Startkilometer sein');
       }
 
       const gefahreneKm = end - start;
@@ -87,25 +80,19 @@ export async function PUT(
         data: { status: 'ABGESCHLOSSEN' },
       });
 
-      return NextResponse.json(updatedFahrt);
+      return jsonResponse(updatedFahrt);
     }
 
     // Default action: edit - Fahrt bearbeiten (beide Kilometer erforderlich)
-    if (startKilometer === undefined || endKilometer === undefined) {
-      return NextResponse.json(
-        { error: 'Start- und Endkilometer sind erforderlich' },
-        { status: 400 }
-      );
+    const start = parseIntSafe(startKilometer);
+    const end = parseIntSafe(endKilometer);
+
+    if (start === null || end === null) {
+      return errorResponse('Start- und Endkilometer sind erforderlich');
     }
 
-    const start = parseInt(startKilometer);
-    const end = parseInt(endKilometer);
-
     if (start >= end) {
-      return NextResponse.json(
-        { error: 'Endkilometer muss größer als Startkilometer sein' },
-        { status: 400 }
-      );
+      return errorResponse('Endkilometer muss größer als Startkilometer sein');
     }
 
     const gefahreneKm = end - start;
@@ -136,9 +123,9 @@ export async function PUT(
       data: { kilometerstand: end },
     });
 
-    return NextResponse.json(updatedFahrt);
-  } catch (error: any) {
+    return jsonResponse(updatedFahrt);
+  } catch (error) {
     console.error('Update fahrt error:', error);
-    return NextResponse.json({ error: 'Fehler beim Aktualisieren' }, { status: 500 });
+    return serverErrorResponse('Fehler beim Aktualisieren');
   }
 }

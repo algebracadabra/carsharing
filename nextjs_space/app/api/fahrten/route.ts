@@ -1,23 +1,23 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import {
+  jsonResponse,
+  errorResponse,
+  notFoundResponse,
+  serverErrorResponse,
+  requireAuth,
+  parseIntSafe,
+} from '@/lib/api-utils';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
-    }
-
-    const userId = (session.user as any)?.id;
-    const userRole = (session.user as any)?.role;
+    const { user, error } = await requireAuth();
+    if (error) return error;
 
     let fahrten;
 
-    if (userRole === 'ADMIN') {
+    if (user!.role === 'ADMIN') {
       // Admin sieht alle Fahrten
       fahrten = await prisma.fahrt.findMany({
         include: { fahrzeug: true, fahrer: true, buchung: true },
@@ -28,8 +28,8 @@ export async function GET(request: Request) {
       fahrten = await prisma.fahrt.findMany({
         where: {
           OR: [
-            { fahrerId: userId },
-            { fahrzeug: { halterId: userId } },
+            { fahrerId: user!.id },
+            { fahrzeug: { halterId: user!.id } },
           ],
         },
         include: { fahrzeug: true, fahrer: true, buchung: true },
@@ -37,30 +37,24 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json(fahrten);
-  } catch (error: any) {
+    return jsonResponse(fahrten);
+  } catch (error) {
     console.error('Get fahrten error:', error);
-    return NextResponse.json({ error: 'Fehler beim Laden' }, { status: 500 });
+    return serverErrorResponse('Fehler beim Laden');
   }
 }
 
 // POST: Fahrt starten (nur Buchung + Startkilometer)
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
-    }
+    const { user, error } = await requireAuth();
+    if (error) return error;
 
-    const userId = (session.user as any)?.id;
     const body = await request.json();
     const { buchungId, startKilometer } = body;
 
     if (!buchungId || startKilometer === undefined) {
-      return NextResponse.json(
-        { error: 'Buchung und Startkilometer sind erforderlich' },
-        { status: 400 }
-      );
+      return errorResponse('Buchung und Startkilometer sind erforderlich');
     }
 
     // Get buchung details
@@ -70,12 +64,12 @@ export async function POST(request: Request) {
     });
 
     if (!buchung) {
-      return NextResponse.json({ error: 'Buchung nicht gefunden' }, { status: 404 });
+      return notFoundResponse('Buchung nicht gefunden');
     }
 
     // Prevent creating trips from cancelled bookings
     if (buchung.status === 'STORNIERT') {
-      return NextResponse.json({ error: 'Stornierte Buchungen können keine Fahrten haben' }, { status: 400 });
+      return errorResponse('Stornierte Buchungen können keine Fahrten haben');
     }
 
     // Check if fahrt already exists for this buchung
@@ -83,10 +77,13 @@ export async function POST(request: Request) {
       where: { buchungId },
     });
     if (existingFahrt) {
-      return NextResponse.json({ error: 'Für diese Buchung existiert bereits eine Fahrt' }, { status: 400 });
+      return errorResponse('Für diese Buchung existiert bereits eine Fahrt');
     }
 
-    const start = parseInt(startKilometer);
+    const start = parseIntSafe(startKilometer);
+    if (start === null) {
+      return errorResponse('Ungültiger Kilometerstand');
+    }
 
     // Check for kilometer conflict
     const kilometerKonflikt = start !== buchung.fahrzeug.kilometerstand;
@@ -96,7 +93,7 @@ export async function POST(request: Request) {
       data: {
         buchungId,
         fahrzeugId: buchung.fahrzeugId,
-        fahrerId: userId,
+        fahrerId: user!.id,
         startKilometer: start,
         endKilometer: null,
         gefahreneKm: null,
@@ -114,9 +111,9 @@ export async function POST(request: Request) {
       data: { status: 'LAUFEND' },
     });
 
-    return NextResponse.json(fahrt, { status: 201 });
-  } catch (error: any) {
+    return jsonResponse(fahrt, 201);
+  } catch (error) {
     console.error('Create fahrt error:', error);
-    return NextResponse.json({ error: 'Fehler beim Erstellen' }, { status: 500 });
+    return serverErrorResponse('Fehler beim Erstellen');
   }
 }

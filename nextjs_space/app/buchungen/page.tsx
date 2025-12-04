@@ -3,13 +3,17 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Calendar, Plus, Car, User, Clock, X, AlertCircle, ChevronDown } from 'lucide-react';
+import { Calendar, Plus, Car, Clock, X, AlertCircle, ChevronDown } from 'lucide-react';
+import { formatDate, formatTime } from '@/lib/utils';
+import { BuchungStatusBadge } from '@/components/status-badge';
+import { LoadingState, EmptyState, PageContainer, PageHeader, ErrorAlert } from '@/components/page-states';
+import type { BuchungWithRelations, Fahrzeug } from '@/lib/types';
 
 export default function BuchungenPage() {
   const { data: session, status } = useSession() || {};
   const router = useRouter();
-  const [buchungen, setBuchungen] = useState<any[]>([]);
-  const [fahrzeuge, setFahrzeuge] = useState<any[]>([]);
+  const [buchungen, setBuchungen] = useState<BuchungWithRelations[]>([]);
+  const [fahrzeuge, setFahrzeuge] = useState<Fahrzeug[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -112,29 +116,27 @@ export default function BuchungenPage() {
   };
 
   if (loading || status === 'loading') {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">Laden...</div>
-      </div>
-    );
+    return <LoadingState />;
   }
 
+  const addButton = (
+    <button
+      onClick={() => setShowModal(true)}
+      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
+      aria-label="Neue Buchung erstellen"
+    >
+      <Plus className="w-5 h-5" aria-hidden="true" />
+      Neue Buchung
+    </button>
+  );
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Buchungen</h1>
-          <p className="text-gray-600">Verwalten Sie Ihre Fahrzeugbuchungen</p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
-          aria-label="Neue Buchung erstellen"
-        >
-          <Plus className="w-5 h-5" aria-hidden="true" />
-          Neue Buchung
-        </button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Buchungen"
+        description="Verwalten Sie Ihre Fahrzeugbuchungen"
+        action={addButton}
+      />
 
       {(() => {
         const offeneBuchungen = buchungen?.filter?.((b: any) => b?.status === 'GEPLANT' || b?.status === 'LAUFEND') ?? [];
@@ -163,46 +165,16 @@ export default function BuchungenPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
                     <Clock className="w-4 h-4" aria-hidden="true" />
-                    <span>
-                      Start: {new Date(buchung?.startZeit)?.toLocaleDateString?.('de-DE') ?? ''}{' '}
-                      {new Date(buchung?.startZeit)?.toLocaleTimeString?.('de-DE', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }) ?? ''}
-                    </span>
+                    <span>Start: {formatDate(buchung?.startZeit)} {formatTime(buchung?.startZeit)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <Clock className="w-4 h-4" aria-hidden="true" />
-                    <span>
-                      Ende: {new Date(buchung?.endZeit)?.toLocaleDateString?.('de-DE') ?? ''}{' '}
-                      {new Date(buchung?.endZeit)?.toLocaleTimeString?.('de-DE', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }) ?? ''}
-                    </span>
+                    <span>Ende: {formatDate(buchung?.endZeit)} {formatTime(buchung?.endZeit)}</span>
                   </div>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <span
-                  className={`text-xs font-medium px-3 py-1 rounded-full ${
-                    buchung?.status === 'GEPLANT'
-                      ? 'bg-blue-100 text-blue-700'
-                      : buchung?.status === 'LAUFEND'
-                      ? 'bg-purple-100 text-purple-700'
-                      : buchung?.status === 'ABGESCHLOSSEN'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
-                  }`}
-                >
-                  {buchung?.status === 'GEPLANT'
-                    ? 'Geplant'
-                    : buchung?.status === 'LAUFEND'
-                    ? 'Laufend'
-                    : buchung?.status === 'ABGESCHLOSSEN'
-                    ? 'Abgeschlossen'
-                    : 'Storniert'}
-                </span>
+                <BuchungStatusBadge status={buchung.status} />
                 {buchung?.status === 'GEPLANT' && (
                   <button
                     onClick={() => handleStornieren(buchung?.id)}
@@ -218,13 +190,11 @@ export default function BuchungenPage() {
 
         if (buchungen.length === 0) {
           return (
-            <div className="bg-white rounded-lg shadow-md p-12 text-center">
-              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" aria-hidden="true" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Keine Buchungen vorhanden
-              </h3>
-              <p className="text-gray-600">Erstellen Sie Ihre erste Buchung</p>
-            </div>
+            <EmptyState
+              icon={Calendar}
+              title="Keine Buchungen vorhanden"
+              description="Erstellen Sie Ihre erste Buchung"
+            />
           );
         }
 
@@ -291,12 +261,7 @@ export default function BuchungenPage() {
               </button>
             </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3" role="alert">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
-            )}
+            {error && <ErrorAlert message={error} icon={AlertCircle} className="mb-6" />}
 
             <form onSubmit={handleCreateBuchung} className="space-y-4">
               <div>
@@ -402,6 +367,6 @@ export default function BuchungenPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
