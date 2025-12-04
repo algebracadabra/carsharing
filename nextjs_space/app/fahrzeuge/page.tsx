@@ -9,6 +9,7 @@ import { Car, Plus, MapPin, TrendingUp, Settings } from 'lucide-react';
 import { formatNumber, formatCurrency } from '@/lib/utils';
 import { FahrzeugStatusBadge } from '@/components/status-badge';
 import { LoadingState, EmptyState, PageContainer, PageHeader } from '@/components/page-states';
+import { VehicleSchedule } from '@/components/vehicle-schedule';
 import type { FahrzeugWithHalter, SessionUser } from '@/lib/types';
 
 export default function FahrzeugePage() {
@@ -77,6 +78,11 @@ export default function FahrzeugePage() {
         description="Verwalten Sie alle verfügbaren Fahrzeuge"
         action={addButton}
       />
+
+      {/* Belegungsübersicht */}
+      <div className="mb-8">
+        <VehicleSchedule />
+      </div>
 
       {fahrzeuge.length === 0 ? (
         <EmptyState
