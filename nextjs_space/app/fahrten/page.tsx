@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Route, Plus, Car, AlertCircle, X, Edit, Play, CheckCircle, Clock, ChevronDown } from 'lucide-react';
+import { Route, Plus, Car, AlertCircle, X, Edit, Play, CheckCircle, Clock, ChevronDown, Zap } from 'lucide-react';
 import { formatNumber, formatCurrency } from '@/lib/utils';
 
 export default function FahrtenPage() {
@@ -19,6 +19,13 @@ export default function FahrtenPage() {
   const [showStartModal, setShowStartModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showSchnellbuchungModal, setShowSchnellbuchungModal] = useState(false);
+  
+  // Schnellbuchung states
+  const [verfuegbareFahrzeuge, setVerfuegbareFahrzeuge] = useState<any[]>([]);
+  const [schnellbuchungDauer, setSchnellbuchungDauer] = useState(3); // Default: 3 Stunden
+  const [selectedSchnellFahrzeug, setSelectedSchnellFahrzeug] = useState<any>(null);
+  const [checkingVerfuegbarkeit, setCheckingVerfuegbarkeit] = useState(true);
   
   const [selectedBuchung, setSelectedBuchung] = useState<any>(null);
   const [selectedFahrt, setSelectedFahrt] = useState<any>(null);
@@ -85,8 +92,41 @@ export default function FahrtenPage() {
   useEffect(() => {
     if (status === 'authenticated') {
       fetchData();
+      checkVerfuegbarkeit();
+      
+      // Periodisch Verfügbarkeit prüfen (alle 30 Sekunden)
+      const interval = setInterval(() => {
+        checkVerfuegbarkeit();
+      }, 30000);
+      
+      return () => clearInterval(interval);
     }
   }, [status]);
+
+  // Prüft, ob Fahrzeuge für die nächsten X Stunden verfügbar sind
+  const checkVerfuegbarkeit = async (dauer: number = schnellbuchungDauer) => {
+    setCheckingVerfuegbarkeit(true);
+    try {
+      const start = new Date();
+      const end = new Date(start.getTime() + dauer * 60 * 60 * 1000);
+      
+      const res = await fetch(
+        `/api/fahrzeuge/verfuegbar?startZeit=${start.toISOString()}&endZeit=${end.toISOString()}`
+      );
+      
+      if (res.ok) {
+        const data = await res.json();
+        setVerfuegbareFahrzeuge(data ?? []);
+      } else {
+        setVerfuegbareFahrzeuge([]);
+      }
+    } catch (error) {
+      console.error('Error checking verfuegbarkeit:', error);
+      setVerfuegbareFahrzeuge([]);
+    } finally {
+      setCheckingVerfuegbarkeit(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -278,11 +318,90 @@ export default function FahrtenPage() {
     setShowStartModal(false);
     setShowCompleteModal(false);
     setShowEditModal(false);
+    setShowSchnellbuchungModal(false);
     setSelectedBuchung(null);
     setSelectedFahrt(null);
     setEditingFahrt(null);
+    setSelectedSchnellFahrzeug(null);
     setError('');
     setKonfliktWarnung(null);
+  };
+
+  // === SCHNELLBUCHUNG + FAHRT STARTEN ===
+  const handleOpenSchnellbuchungModal = async () => {
+    await checkVerfuegbarkeit(schnellbuchungDauer);
+    setSelectedSchnellFahrzeug(null);
+    setFormData({
+      buchungId: '',
+      startKilometer: '',
+      endKilometer: '',
+      bemerkungen: '',
+    });
+    setShowSchnellbuchungModal(true);
+    setError('');
+  };
+
+  const handleDauerChange = async (newDauer: number) => {
+    setSchnellbuchungDauer(newDauer);
+    await checkVerfuegbarkeit(newDauer);
+  };
+
+  const handleSchnellbuchungUndFahrtStarten = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+
+    try {
+      if (!selectedSchnellFahrzeug) {
+        throw new Error('Bitte wählen Sie ein Fahrzeug aus');
+      }
+
+      const startZeit = new Date();
+      const endZeit = new Date(startZeit.getTime() + schnellbuchungDauer * 60 * 60 * 1000);
+
+      // 1. Schnellbuchung erstellen
+      const buchungRes = await fetch('/api/buchungen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fahrzeugId: selectedSchnellFahrzeug.id,
+          startZeit: startZeit.toISOString(),
+          endZeit: endZeit.toISOString(),
+        }),
+      });
+
+      if (!buchungRes.ok) {
+        const data = await buchungRes.json();
+        throw new Error(data.error || 'Fehler beim Erstellen der Buchung');
+      }
+
+      const buchung = await buchungRes.json();
+
+      // 2. Fahrt starten
+      const fahrtRes = await fetch('/api/fahrten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          buchungId: buchung.id,
+          startKilometer: formData.startKilometer || selectedSchnellFahrzeug.kilometerstand,
+        }),
+      });
+
+      if (!fahrtRes.ok) {
+        const data = await fahrtRes.json();
+        throw new Error(data.error || 'Fehler beim Starten der Fahrt');
+      }
+
+      setShowSchnellbuchungModal(false);
+      setSelectedSchnellFahrzeug(null);
+      setFormData({ buchungId: '', startKilometer: '', endKilometer: '', bemerkungen: '' });
+      fetchData();
+      checkVerfuegbarkeit();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading || status === 'loading') {
@@ -303,13 +422,22 @@ export default function FahrtenPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Fahrten</h1>
           <p className="text-gray-600">Erfassen und verwalten Sie Ihre Fahrten</p>
         </div>
-        <button
-          onClick={() => handleOpenStartModal()}
-          className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
-          Fahrt starten
-        </button>
+        <div className="flex items-center gap-2">
+          {!checkingVerfuegbarkeit && verfuegbareFahrzeuge.length === 0 && (
+            <span className="text-sm text-orange-600 font-medium">
+              Kein Fahrzeug verfügbar
+            </span>
+          )}
+          <button
+            onClick={handleOpenSchnellbuchungModal}
+            disabled={checkingVerfuegbarkeit || verfuegbareFahrzeuge.length === 0}
+            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            title={verfuegbareFahrzeuge.length === 0 ? 'Kein Fahrzeug verfügbar' : 'Schnellbuchung + Fahrt starten'}
+          >
+            <Zap className="w-4 h-4 mr-2" aria-hidden="true" />
+            {checkingVerfuegbarkeit ? 'Prüfe...' : 'Fahrt starten'}
+          </button>
+        </div>
       </div>
 
       {/* LAUFENDE FAHRTEN - Prominent ganz oben */}
@@ -369,7 +497,7 @@ export default function FahrtenPage() {
           <div className="flex items-center gap-2 mb-4">
             <Clock className="w-5 h-5 text-orange-600" aria-hidden="true" />
             <h2 className="text-xl font-bold text-gray-900">
-              Buchungen ohne Fahrt ({offeneBuchungen.length})
+              Offene Buchungen ({offeneBuchungen.length})
             </h2>
           </div>
           <p className="text-sm text-gray-600 mb-4">
@@ -852,6 +980,158 @@ export default function FahrtenPage() {
                   className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
                 >
                   {submitting ? 'Wird aktualisiert...' : 'Speichern'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAllModals}
+                  className="px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* === MODAL: SCHNELLBUCHUNG + FAHRT STARTEN === */}
+      {showSchnellbuchungModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 rounded-full p-2">
+                  <Zap className="w-5 h-5 text-blue-600" aria-hidden="true" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Schnellstart</h2>
+              </div>
+              <button
+                onClick={closeAllModals}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+                aria-label="Schließen"
+              >
+                <X className="w-5 h-5" aria-hidden="true" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-6">
+              Erstellt automatisch eine Buchung und startet sofort die Fahrt.
+            </p>
+
+            <form onSubmit={handleSchnellbuchungUndFahrtStarten} className="space-y-4">
+              {/* Buchungsdauer */}
+              <div>
+                <label htmlFor="schnellbuchungDauer" className="block text-sm font-medium text-gray-700 mb-2">
+                  Buchungsdauer (Stunden)
+                </label>
+                <select
+                  id="schnellbuchungDauer"
+                  value={schnellbuchungDauer}
+                  onChange={(e) => handleDauerChange(parseInt(e.target.value))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value={1}>1 Stunde</option>
+                  <option value={2}>2 Stunden</option>
+                  <option value={3}>3 Stunden</option>
+                  <option value={4}>4 Stunden</option>
+                  <option value={6}>6 Stunden</option>
+                  <option value={8}>8 Stunden</option>
+                  <option value={12}>12 Stunden</option>
+                  <option value={24}>24 Stunden</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Zeitraum: Jetzt bis {new Date(Date.now() + schnellbuchungDauer * 60 * 60 * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                </p>
+              </div>
+
+              {/* Fahrzeug auswählen */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Verfügbare Fahrzeuge ({verfuegbareFahrzeuge.length})
+                </label>
+                {verfuegbareFahrzeuge.length === 0 ? (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+                    <AlertCircle className="w-8 h-8 text-orange-500 mx-auto mb-2" aria-hidden="true" />
+                    <p className="text-sm text-orange-800 font-medium">
+                      Kein Fahrzeug für diesen Zeitraum verfügbar
+                    </p>
+                    <p className="text-xs text-orange-600 mt-1">
+                      Versuchen Sie einen kürzeren Zeitraum oder eine andere Zeit.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {verfuegbareFahrzeuge.map((fahrzeug: any) => (
+                      <button
+                        key={fahrzeug.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSchnellFahrzeug(fahrzeug);
+                          setFormData({
+                            ...formData,
+                            startKilometer: fahrzeug.kilometerstand?.toString() ?? '',
+                          });
+                        }}
+                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                          selectedSchnellFahrzeug?.id === fahrzeug.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Car className={`w-5 h-5 ${selectedSchnellFahrzeug?.id === fahrzeug.id ? 'text-blue-600' : 'text-gray-400'}`} aria-hidden="true" />
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900">{fahrzeug.name}</p>
+                            <p className="text-sm text-gray-500">
+                              {formatNumber(fahrzeug.kilometerstand)} km • {formatCurrency(fahrzeug.kilometerpauschale)} €/km
+                            </p>
+                          </div>
+                          {selectedSchnellFahrzeug?.id === fahrzeug.id && (
+                            <CheckCircle className="w-5 h-5 text-blue-600" aria-hidden="true" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Startkilometer (nur wenn Fahrzeug ausgewählt) */}
+              {selectedSchnellFahrzeug && (
+                <div>
+                  <label htmlFor="schnellStartKilometer" className="block text-sm font-medium text-gray-700 mb-2">
+                    Startkilometer
+                  </label>
+                  <input
+                    id="schnellStartKilometer"
+                    type="number"
+                    value={formData.startKilometer}
+                    onChange={(e) => setFormData({ ...formData, startKilometer: e.target.value })}
+                    min="0"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Aktueller Fahrzeugstand: {formatNumber(selectedSchnellFahrzeug.kilometerstand)} km
+                  </p>
+                </div>
+              )}
+
+              {/* Fehler */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={submitting || !selectedSchnellFahrzeug}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Wird gestartet...' : 'Buchen & Fahrt starten'}
                 </button>
                 <button
                   type="button"

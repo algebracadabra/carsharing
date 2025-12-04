@@ -37,6 +37,13 @@ export function VehicleSchedule() {
 
   useEffect(() => {
     fetchBelegung();
+    
+    // Periodisch aktualisieren (alle 30 Sekunden)
+    const interval = setInterval(() => {
+      fetchBelegung();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchBelegung = async () => {
