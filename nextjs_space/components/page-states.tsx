@@ -27,12 +27,23 @@ export function LoadingState({ message = 'Laden...', className }: LoadingStatePr
 interface ErrorStateProps {
   message?: string;
   className?: string;
+  onRetry?: () => void;
 }
 
-export function ErrorState({ message = 'Ein Fehler ist aufgetreten', className }: ErrorStateProps) {
+export function ErrorState({ message = 'Ein Fehler ist aufgetreten', className, onRetry }: ErrorStateProps) {
   return (
     <div className={cn('max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8', className)}>
-      <div className="text-center text-red-600">{message}</div>
+      <div className="text-center">
+        <div className="text-red-600 mb-4">{message}</div>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Erneut versuchen
+          </button>
+        )}
+      </div>
     </div>
   );
 }
