@@ -85,7 +85,7 @@ export default function RegisterPage() {
             Konto erstellen
           </h1>
           <p className="text-center text-gray-600 mb-8">
-            Werden Sie Teil unserer CarSharing-Gemeinschaft
+            Werden Sie Teil unserer Gülstorf shares-Gemeinschaft
           </p>
 
           {error && (

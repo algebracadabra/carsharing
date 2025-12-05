@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="car" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="people" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Dezente Kreise im Hintergrund -->
+  <circle cx="150" cy="150" r="200" fill="#0ea5e9" opacity="0.04"/>
+  <circle cx="1050" cy="480" r="220" fill="#22c55e" opacity="0.04"/>
+  
+  <!-- Icon links -->
+  <g transform="translate(80, 140) scale(0.68)">
+    <!-- Auto -->
+    <path d="M96 300 L124 240 C136 216 160 200 188 200 L324 200 C352 200 376 216 388 240 L416 300 L424 300 C444 300 460 316 460 336 L460 372 C460 392 444 408 424 408 L404 408 L404 424 C404 440 392 452 376 452 L356 452 C340 452 328 440 328 424 L328 408 L184 408 L184 424 C184 440 172 452 156 452 L136 452 C120 452 108 440 108 424 L108 408 L88 408 C68 408 52 392 52 372 L52 336 C52 316 68 300 88 300 Z" fill="url(#car)"/>
+    <path d="M140 292 L160 248 C166 236 180 228 196 228 L248 228 L248 292 Z" fill="#0f172a" opacity="0.6"/>
+    <path d="M264 228 L316 228 C332 228 346 236 352 248 L372 292 L264 292 Z" fill="#0f172a" opacity="0.6"/>
+    <rect x="72" y="316" width="36" height="24" rx="6" fill="#fbbf24"/>
+    <rect x="404" y="316" width="36" height="24" rx="6" fill="#fbbf24"/>
+    <circle cx="148" cy="408" r="36" fill="#1e293b"/>
+    <circle cx="148" cy="408" r="22" fill="#475569"/>
+    <circle cx="148" cy="408" r="8" fill="#94a3b8"/>
+    <circle cx="364" cy="408" r="36" fill="#1e293b"/>
+    <circle cx="364" cy="408" r="22" fill="#475569"/>
+    <circle cx="364" cy="408" r="8" fill="#94a3b8"/>
+    
+    <!-- Personen -->
+    <circle cx="192" cy="100" r="32" fill="url(#people)"/>
+    <path d="M192 140 C160 140 140 160 140 188 L140 196 C140 200 144 204 148 204 L236 204 C240 204 244 200 244 196 L244 188 C244 160 224 140 192 140 Z" fill="url(#people)"/>
+    <circle cx="320" cy="100" r="32" fill="url(#people)"/>
+    <path d="M320 140 C288 140 268 160 268 188 L268 196 C268 200 272 204 276 204 L364 204 C368 204 372 200 372 196 L372 188 C372 160 352 140 320 140 Z" fill="url(#people)"/>
+    <circle cx="256" cy="72" r="16" fill="#22c55e"/>
+    <path d="M208 88 Q256 52 304 88" stroke="#22c55e" stroke-width="8" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Text rechts -->
+  <text x="520" y="280" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="72" font-weight="700" fill="white">CarSharing</text>
+  <text x="520" y="360" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="32" fill="#94a3b8">Gemeinschaftliches Fahrzeugteilen</text>
+  
+  <!-- Feature Tags -->
+  <g transform="translate(520, 420)">
+    <rect width="140" height="44" rx="22" fill="#0ea5e9" opacity="0.15"/>
+    <text x="70" y="29" font-family="system-ui, sans-serif" font-size="16" font-weight="500" fill="#0ea5e9" text-anchor="middle">Buchungen</text>
+  </g>
+  <g transform="translate(680, 420)">
+    <rect width="120" height="44" rx="22" fill="#22c55e" opacity="0.15"/>
+    <text x="60" y="29" font-family="system-ui, sans-serif" font-size="16" font-weight="500" fill="#22c55e" text-anchor="middle">Fahrten</text>
+  </g>
+  <g transform="translate(820, 420)">
+    <rect width="160" height="44" rx="22" fill="#f59e0b" opacity="0.15"/>
+    <text x="80" y="29" font-family="system-ui, sans-serif" font-size="16" font-weight="500" fill="#f59e0b" text-anchor="middle">Abrechnung</text>
+  </g>
+  
+  <!-- Akzentlinie unten -->
+  <rect x="0" y="612" width="1200" height="18" fill="url(#accent)"/>
+</svg>

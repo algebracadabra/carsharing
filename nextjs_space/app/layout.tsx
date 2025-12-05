@@ -10,16 +10,31 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
-  title: 'CarSharing App - Gemeinschaftliches Fahrzeugteilen',
+  title: 'Gülstorf shares - Gemeinschaftliches Fahrzeugteilen',
   description: 'Plattform für gemeinschaftliches CarSharing mit Fahrzeugverwaltung, Buchungen und Abrechnung',
+  manifest: '/manifest.json',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
+    apple: '/icon.svg',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Gülstorf shares',
   },
   openGraph: {
-    title: 'CarSharing App',
-    description: 'Plattform für gemeinschaftliches CarSharing',
-    images: ['/og-image.png'],
+    title: 'Gülstorf shares',
+    description: 'Gemeinschaftliches Fahrzeugteilen mit Buchungen, Fahrten und Abrechnung',
+    images: ['/og-image.svg'],
+    type: 'website',
+    locale: 'de_DE',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Gülstorf shares',
+    description: 'Gemeinschaftliches Fahrzeugteilen',
+    images: ['/og-image.svg'],
   },
 };
 

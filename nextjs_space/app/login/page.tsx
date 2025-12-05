@@ -52,7 +52,7 @@ export default function LoginPage() {
             Willkommen zurück
           </h1>
           <p className="text-center text-gray-600 mb-8">
-            Melden Sie sich bei Ihrem CarSharing-Konto an
+            Melden Sie sich bei Ihrem Gülstorf shares-Konto an
           </p>
 
           {error && (
