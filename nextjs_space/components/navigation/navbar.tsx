@@ -3,7 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Car, LayoutDashboard, CarFront, Calendar, Route, Wallet, User, LogOut, Menu, X } from 'lucide-react';
+import { Car, LayoutDashboard, CarFront, Calendar, Route, Wallet, User, LogOut, Menu, X, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
@@ -40,6 +40,7 @@ export function Navbar() {
     { name: 'Buchungen', href: '/buchungen', icon: Calendar },
     { name: 'Fahrten', href: '/fahrten', icon: Route },
     { name: 'Abrechnung', href: '/abrechnung', icon: Wallet },
+    ...(userRole === 'ADMIN' ? [{ name: 'Benutzer', href: '/usermanagement', icon: Users }] : []),
   ];
 
   if (status === 'loading') {
