@@ -74,10 +74,13 @@ export async function PUT(
         data: { kilometerstand: end },
       });
 
-      // Update buchung status to ABGESCHLOSSEN
+      // Update buchung status to ABGESCHLOSSEN and adjust endZeit to now
       await prisma.buchung.update({
         where: { id: existingFahrt.buchungId },
-        data: { status: 'ABGESCHLOSSEN' },
+        data: { 
+          status: 'ABGESCHLOSSEN',
+          endZeit: new Date(),  // Buchungsende auf Fahrtende setzen
+        },
       });
 
       return jsonResponse(updatedFahrt);
