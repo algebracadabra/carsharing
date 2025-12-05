@@ -21,6 +21,23 @@ export function LoadingState({ message = 'Laden...', className }: LoadingStatePr
 }
 
 // ============================================
+// Error State (Full Page)
+// ============================================
+
+interface ErrorStateProps {
+  message?: string;
+  className?: string;
+}
+
+export function ErrorState({ message = 'Ein Fehler ist aufgetreten', className }: ErrorStateProps) {
+  return (
+    <div className={cn('max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8', className)}>
+      <div className="text-center text-red-600">{message}</div>
+    </div>
+  );
+}
+
+// ============================================
 // Empty State
 // ============================================
 
