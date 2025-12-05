@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check, Wallet } from 'lucide-react';
 import { formatNumber, formatCurrency } from '@/lib/utils';
 
 export default function FahrzeugDetailPage() {
@@ -25,6 +25,15 @@ export default function FahrzeugDetailPage() {
     fixkosten: '0',
     wartungsReparaturKostenIncrement: '',
   });
+  const [kontostand, setKontostand] = useState<any>(null);
+
+  const zahlungsartLabels: Record<string, string> = {
+    BAR: 'Bar',
+    TANKEN: 'Tanken',
+    PFLEGE: 'Pflege',
+    WARTUNG: 'Wartung',
+    REPARATUR: 'Reparatur',
+  };
 
   const userRole = (session?.user as any)?.role;
   const userId = (session?.user as any)?.id;
@@ -38,8 +47,23 @@ export default function FahrzeugDetailPage() {
   useEffect(() => {
     if (status === 'authenticated' && id) {
       fetchFahrzeug();
+      fetchKontostand();
     }
   }, [status, id]);
+
+  const fetchKontostand = async () => {
+    try {
+      const response = await fetch(`/api/abrechnung/zusammenfassung?fahrzeugId=${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Finde den Kontostand für dieses Fahrzeug
+        const fzKontostand = data.fahrzeugKontostaende?.find((fz: any) => fz.fahrzeugId === id);
+        setKontostand(fzKontostand || null);
+      }
+    } catch (error) {
+      console.error('Error fetching kontostand:', error);
+    }
+  };
 
   const fetchFahrzeug = async () => {
     try {
@@ -393,6 +417,71 @@ export default function FahrzeugDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Kontostand Section */}
+      {kontostand && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Wallet className="w-5 h-5 text-gray-700" aria-hidden="true" />
+            <h2 className="text-xl font-bold text-gray-900">Kontostand</h2>
+          </div>
+
+          {/* Übersichts-Karten */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="w-4 h-4 text-blue-600" aria-hidden="true" />
+                <span className="text-sm font-medium text-blue-700">Einnahmen (Fahrten)</span>
+              </div>
+              <p className="text-2xl font-bold text-blue-600">
+                {formatCurrency(kontostand.gesamtEinnahmen)} €
+              </p>
+            </div>
+            <div className="bg-green-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="w-4 h-4 text-green-600" aria-hidden="true" />
+                <span className="text-sm font-medium text-green-700">Zahlungen erhalten</span>
+              </div>
+              <p className="text-2xl font-bold text-green-600">
+                {formatCurrency(kontostand.gesamtZahlungen)} €
+              </p>
+            </div>
+            <div className={`rounded-lg p-4 ${
+              kontostand.saldo > 0
+                ? 'bg-orange-50'
+                : 'bg-emerald-50'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <Wallet className={`w-4 h-4 ${kontostand.saldo > 0 ? 'text-orange-600' : 'text-emerald-600'}`} aria-hidden="true" />
+                <span className={`text-sm font-medium ${kontostand.saldo > 0 ? 'text-orange-700' : 'text-emerald-700'}`}>
+                  Offener Saldo
+                </span>
+              </div>
+              <p className={`text-2xl font-bold ${kontostand.saldo > 0 ? 'text-orange-600' : 'text-emerald-600'}`}>
+                {formatCurrency(kontostand.saldo)} €
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {kontostand.saldo > 0 ? 'Noch offen' : 'Ausgeglichen'}
+              </p>
+            </div>
+          </div>
+
+          {/* Aufschlüsselung nach Zahlungsart */}
+          {kontostand.zahlungenNachArt && Object.keys(kontostand.zahlungenNachArt).length > 0 && (
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Zahlungen nach Art</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {Object.entries(kontostand.zahlungenNachArt).map(([art, betrag]) => (
+                  <div key={art} className="bg-gray-50 rounded-lg p-3">
+                    <span className="text-xs text-gray-500 block">{zahlungsartLabels[art] || art}</span>
+                    <span className="text-lg font-semibold text-gray-900">{formatCurrency(betrag as number)} €</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Buchungen Section */}
       {fahrzeug?.buchungen && fahrzeug.buchungen.length > 0 && (
