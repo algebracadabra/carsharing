@@ -5,7 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check, Wallet, FileText, Droplets, Thermometer, Users, CircleDot, Baby, AlertTriangle, Shield, Info, ChevronDown, ChevronUp, Clock, Euro } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check, Wallet, FileText, Droplets, Thermometer, Users, CircleDot, Baby, AlertTriangle, Shield, Info, ChevronDown, ChevronUp, Clock, Euro, TrendingDown, ExternalLink } from 'lucide-react';
+import { berechneWertverlust, WertverlustInput, WertverlustOutput } from '@/lib/kalkulation';
 import { formatNumber, formatCurrency, getUserDisplayName } from '@/lib/utils';
 import { WartungSection } from '@/components/wartung-section';
 
@@ -27,6 +28,7 @@ export default function FahrzeugDetailPage() {
     wartungsReparaturKostenIncrement: '',
   });
   const [kontostand, setKontostand] = useState<any>(null);
+  const [wertverlust, setWertverlust] = useState<WertverlustOutput | null>(null);
   
   // Einklappbare Sektionen
   const [showLebenszyklus, setShowLebenszyklus] = useState(false);
@@ -71,12 +73,39 @@ export default function FahrzeugDetailPage() {
     }
   };
 
+  const berechneWertverlustFuerFahrzeug = (data: any) => {
+    // Prüfen ob alle Lebenszyklus-Felder vorhanden sind
+    const vollstaendig = !!(data.baujahr && data.restwert !== null && data.erwarteteKmEndOfLife && data.erwarteteJahreEndOfLife && data.geschaetzteKmProJahr);
+    
+    if (vollstaendig) {
+      try {
+        const input: WertverlustInput = {
+          aktuellesJahr: new Date().getFullYear(),
+          baujahr: data.baujahr,
+          restwert: data.restwert,
+          erwarteteKmEndOfLife: data.erwarteteKmEndOfLife,
+          erwarteteJahreEndOfLife: data.erwarteteJahreEndOfLife,
+          geschaetzteKmProJahr: data.geschaetzteKmProJahr,
+          kilometerstand: data.kilometerstand,
+        };
+        const result = berechneWertverlust(input);
+        setWertverlust(result);
+      } catch (error) {
+        console.error('Fehler bei Wertverlust-Berechnung:', error);
+        setWertverlust(null);
+      }
+    } else {
+      setWertverlust(null);
+    }
+  };
+
   const fetchFahrzeug = async () => {
     try {
       const response = await fetch(`/api/fahrzeuge/${id}`);
       if (response.ok) {
         const data = await response.json();
         setFahrzeug(data);
+        berechneWertverlustFuerFahrzeug(data);
         
         setCostFormData({
           treibstoffKostenIncrement: '',
@@ -443,6 +472,59 @@ export default function FahrzeugDetailPage() {
 
         {showLebenszyklus && (
           <div className="px-6 pb-6 border-t border-gray-100">
+            {/* Wertverlust-Anzeige */}
+            {wertverlust ? (
+              <div className="bg-gradient-to-r from-purple-50 to-fuchsia-50 border border-purple-200 rounded-lg p-4 mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="w-5 h-5 text-purple-600" aria-hidden="true" />
+                    <span className="font-semibold text-purple-700">Wertverlust</span>
+                  </div>
+                  <Link
+                    href="/hilfe/wertverlust"
+                    className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 transition-colors"
+                  >
+                    <span>Wie wird das berechnet?</span>
+                    <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Monatlich</p>
+                    <p className="text-xl font-bold text-purple-600">
+                      {formatCurrency(wertverlust.wertverlustProMonat)} €
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Jährlich</p>
+                    <p className="text-xl font-bold text-purple-600">
+                      {formatCurrency(wertverlust.wertverlustProJahr)} €
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  Restlebensdauer: {wertverlust.jahreRest.toFixed(1)} Jahre • {formatCurrency(wertverlust.wertverlustProKm)} €/km
+                </p>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <TrendingDown className="w-5 h-5" aria-hidden="true" />
+                  <span className="font-medium">Wertverlust</span>
+                </div>
+                <p className="text-sm text-gray-400 mt-2">
+                  Bitte füllen Sie die Lebenszyklus-Daten aus, um den Wertverlust zu berechnen.
+                </p>
+                <Link
+                  href="/hilfe/wertverlust"
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-2 transition-colors"
+                >
+                  <span>Mehr erfahren</span>
+                  <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                </Link>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
               {/* Baujahr & Alter */}
               <div className="bg-indigo-50 rounded-lg p-4">

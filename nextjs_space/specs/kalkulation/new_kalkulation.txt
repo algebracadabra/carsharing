@@ -1,0 +1,244 @@
+specification:
+  name: VehicleDepreciation
+  domain: Carsharing
+  component: WertverlustBerechnung
+  version: 1.0.0
+  description: |
+    Berechnet den zukünftigen Wertverlust eines Fahrzeugs ab heutigem Zeitpunkt
+    auf Basis des aktuellen Restwerts, des Kilometerstands und der erwarteten
+    Restlebensdauer (in Jahren und Kilometern).
+    Der bisherige Wertverlust wird NICHT betrachtet, nur der noch verbleibende
+    Wertverzehr des aktuellen Restwerts.
+
+inputs:
+  - name: aktuellesJahr
+    type: integer
+    required: true
+    description: Kalenderjahr, in dem die Berechnung durchgeführt wird.
+    constraints:
+      - aktuellesJahr >= baujahr
+
+  - name: baujahr
+    type: integer
+    required: true
+    description: Baujahr des Fahrzeugs.
+
+  - name: restwert
+    type: number
+    format: currency
+    required: true
+    description: |
+      Aktuell geschätzter Marktwert des Fahrzeugs in Euro.
+      Dies ist der Betrag, der ab jetzt über die Restlebensdauer abgeschrieben wird.
+    constraints:
+      - restwert >= 0
+
+  - name: erwarteteKmEndOfLife
+    type: integer
+    required: true
+    description: Erwartete Gesamtlaufleistung (in km) am wirtschaftlichen Lebensende.
+    constraints:
+      - erwarteteKmEndOfLife > 0
+
+  - name: erwarteteJahreEndOfLife
+    type: number
+    required: true
+    description: Erwartetes Alter (in Jahren) am wirtschaftlichen Lebensende.
+    constraints:
+      - erwarteteJahreEndOfLife > 0
+
+  - name: geschaetzteKmProJahr
+    type: number
+    required: true
+    description: Erwartete Jahresfahrleistung (ab jetzt) in km/Jahr.
+    constraints:
+      - geschaetzteKmProJahr >= 0
+
+  - name: kilometerstand
+    type: integer
+    required: true
+    description: Aktueller Kilometerstand des Fahrzeugs.
+    constraints:
+      - kilometerstand >= 0
+      - kilometerstand <= erwarteteKmEndOfLife
+
+derived_values:
+  - name: Alter
+    type: number
+    formula: Alter = aktuellesJahr - baujahr
+    description: Aktuelles Fahrzeugalter in Jahren.
+
+  - name: Jahre_rest_alter
+    type: number
+    formula: |
+      Jahre_rest_alter = erwarteteJahreEndOfLife - Alter
+      falls Jahre_rest_alter < 0 → setze Jahre_rest_alter = 0
+    description: |
+      Restlebensdauer basierend auf Altersgrenze. 
+      Wenn das Fahrzeug das erwartete End-of-Life-Alter überschritten hat,
+      wird 0 angenommen.
+
+  - name: km_rest
+    type: number
+    formula: |
+      km_rest = erwarteteKmEndOfLife - kilometerstand
+      falls km_rest < 0 → setze km_rest = 0
+    description: Verbleibende km bis zur erwarteten End-of-Life-Laufleistung.
+
+  - name: Jahre_rest_km
+    type: number
+    formula: |
+      falls geschaetzteKmProJahr > 0:
+        Jahre_rest_km = km_rest / geschaetzteKmProJahr
+      sonst:
+        Jahre_rest_km = null (oder Fehler "geschaetzteKmProJahr_muss_>_0_sein")
+    description: |
+      Restlebensdauer in Jahren, abgeleitet aus verbleibenden km und erwarteten
+      km pro Jahr.
+
+  - name: Jahre_rest
+    type: number
+    formula: |
+      falls Jahre_rest_alter == 0 oder Jahre_rest_km == 0 oder Jahre_rest_km ist null:
+        Jahre_rest = 0
+      sonst:
+        Jahre_rest = min(Jahre_rest_alter, Jahre_rest_km)
+    description: Effektive Restlebensdauer in Jahren. 
+                 Fahrzeug gilt als "am Ende", wenn Jahre_rest = 0.
+
+  - name: Wertverlust_rest
+    type: number
+    formula: Wertverlust_rest = restwert
+    description: |
+      Zukünftiger Wertverlust ab jetzt. Da kein Restwert am Ende modelliert wird,
+      entspricht der zukünftige Wertverlust dem aktuellen Restwert.
+
+  - name: Wertverlust_pro_Jahr
+    type: number
+    formula: |
+      falls Jahre_rest > 0:
+        Wertverlust_pro_Jahr = Wertverlust_rest / Jahre_rest
+      sonst:
+        Wertverlust_pro_Jahr = 0
+    description: Linear verteilter jährlicher Wertverlust auf Basis der Restlebensdauer.
+
+  - name: Wertverlust_pro_Monat
+    type: number
+    formula: Wertverlust_pro_Monat = Wertverlust_pro_Jahr / 12
+    description: Monatlicher Wertverlust, geeignet für Fixkosten-/Kostenreports.
+    note: Nur sinnvoll, wenn Jahre_rest > 0.
+
+  - name: km_rest_effektiv
+    type: number
+    formula: km_rest_effektiv = geschaetzteKmProJahr * Jahre_rest
+    description: Erwartete Restkilometer, die während der Restlebensdauer gefahren werden.
+
+  - name: Wertverlust_pro_km
+    type: number
+    formula: |
+      falls km_rest_effektiv > 0:
+        Wertverlust_pro_km = Wertverlust_rest / km_rest_effektiv
+      sonst:
+        Wertverlust_pro_km = 0
+    description: |
+      Wertverlust je zusätzlich gefahrenem Kilometer. 
+      Kann als Bestandteil der Kilometerpauschale im Carsharing verwendet werden.
+
+business_rules:
+  - id: vehicle_considered_end_of_life
+    description: |
+      Wenn Jahre_rest = 0, gilt das Fahrzeug rechnerisch als am Ende seiner
+      wirtschaftlichen Lebensdauer. 
+      In diesem Fall:
+        - Wertverlust_pro_Jahr = 0
+        - Wertverlust_pro_Monat = 0
+        - Wertverlust_pro_km = 0
+    severity: warning
+
+  - id: km_per_year_must_be_positive_for_time_based_estimation
+    description: |
+      Wenn geschaetzteKmProJahr = 0, kann Jahre_rest_km nicht berechnet werden.
+      Das System soll entweder:
+        - einen Validierungsfehler ausgeben, oder
+        - geschaetzteKmProJahr automatisch auf einen Mindestwert setzen (z.B. 1).
+    severity: error
+
+outputs:
+  - name: Jahre_rest
+    type: number
+    description: Effektive verbleibende Lebensdauer in Jahren.
+
+  - name: Wertverlust_pro_Jahr
+    type: number
+    description: Zukünftiger Wertverlust pro Jahr.
+
+  - name: Wertverlust_pro_Monat
+    type: number
+    description: Zukünftiger Wertverlust pro Monat.
+
+  - name: Wertverlust_pro_km
+    type: number
+    description: Wertverlust je Kilometer, z.B. zur Berechnung der km-Pauschale.
+
+  - name: km_rest_effektiv
+    type: number
+    description: Erwartete verbleibende Fahrleistung (km) ab jetzt.
+
+examples:
+  - id: beispiel_1_standardfahrzeug
+    description: Beispiel aus der Spezifikation für ein typisches Fahrzeug.
+    input:
+      aktuellesJahr: 2025
+      baujahr: 2017
+      restwert: 7000.0
+      erwarteteKmEndOfLife: 250000
+      erwarteteJahreEndOfLife: 15
+      geschaetzteKmProJahr: 15000.0
+      kilometerstand: 150000
+    expected:
+      Alter: 8.0
+      Jahre_rest_alter: 7.0
+      km_rest: 100000.0
+      Jahre_rest_km: 6.6667        # gerundet
+      Jahre_rest: 6.6667           # min(7.0, 6.6667)
+      Wertverlust_rest: 7000.0
+      Wertverlust_pro_Jahr: 1050.0 # 7000 / 6.6667 ≈ 1050
+      Wertverlust_pro_Monat: 87.5  # 1050 / 12
+      km_rest_effektiv: 100000.0   # 15000 * 6.6667 ≈ 100000
+      Wertverlust_pro_km: 0.07     # 7000 / 100000
+
+  - id: beispiel_2_am_lebensende
+    description: Fahrzeug ist bereits über erwartete Lebensdauer hinaus.
+    input:
+      aktuellesJahr: 2035
+      baujahr: 2017
+      restwert: 1000.0
+      erwarteteKmEndOfLife: 250000
+      erwarteteJahreEndOfLife: 15
+      geschaetzteKmProJahr: 15000.0
+      kilometerstand: 260000
+    expected:
+      Alter: 18.0
+      Jahre_rest_alter: 0.0        # 15 - 18 -> auf 0 gesetzt
+      km_rest: 0.0                 # 250000 - 260000 -> auf 0 gesetzt
+      Jahre_rest_km: 0.0
+      Jahre_rest: 0.0
+      Wertverlust_rest: 1000.0
+      Wertverlust_pro_Jahr: 0.0
+      Wertverlust_pro_Monat: 0.0
+      km_rest_effektiv: 0.0
+      Wertverlust_pro_km: 0.0
+
+  - id: beispiel_3_kein_km_pro_jahr
+    description: Validierungsfall, wenn geschaetzteKmProJahr = 0.
+    input:
+      aktuellesJahr: 2025
+      baujahr: 2020
+      restwert: 15000.0
+      erwarteteKmEndOfLife: 250000
+      erwarteteJahreEndOfLife: 15
+      geschaetzteKmProJahr: 0.0
+      kilometerstand: 50000
+    expected_behavior: |
+      Das System gibt einen Fehler "geschaetzteKmProJahr_muss_>_0_sein" aus
+      oder fordert den Benutzer auf, einen sinnvollen Wert zu setzen.
