@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import { Car, Route, AlertCircle, AlertTriangle, Wallet, TrendingDown, TrendingUp } from 'lucide-react';
-import { formatNumber, formatCurrency } from '@/lib/utils';
+import { formatNumber, formatCurrency, getUserDisplayName } from '@/lib/utils';
 import { VehicleSchedule } from '@/components/vehicle-schedule';
 
 export default async function DashboardPage() {
@@ -362,7 +362,7 @@ export default async function DashboardPage() {
                       Kilometerkonflikt: {fahrt?.fahrzeug?.name}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Fahrer: {fahrt?.fahrer?.name} &bull; Start: {formatNumber(fahrt?.startKilometer)} km &bull; Ende: {formatNumber(fahrt?.endKilometer)} km
+                      Fahrer: {getUserDisplayName(fahrt?.fahrer)} &bull; Start: {formatNumber(fahrt?.startKilometer)} km &bull; Ende: {formatNumber(fahrt?.endKilometer)} km
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       Fahrt vom {new Date(fahrt?.createdAt)?.toLocaleDateString?.('de-DE') ?? ''}

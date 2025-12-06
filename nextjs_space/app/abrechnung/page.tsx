@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { Wallet, Plus, CheckCircle, Clock, X, AlertCircle, Upload, Image as ImageIcon, Calendar, Car, User, ChevronDown, TrendingUp, TrendingDown } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getUserDisplayName } from '@/lib/utils';
 
 type ZeitraumTyp = 'monat' | 'jahr' | 'custom';
 
@@ -147,7 +147,7 @@ export default function AbrechnungPage() {
         if (!konten[key]) {
           konten[key] = {
             fahrerId: fahrt?.fahrerId,
-            fahrerName: fahrt?.fahrer?.name,
+            fahrerName: getUserDisplayName(fahrt?.fahrer),
             fahrzeugId: fahrt?.fahrzeugId,
             fahrzeugName: fahrt?.fahrzeug?.name,
             schulden: 0,
@@ -163,7 +163,7 @@ export default function AbrechnungPage() {
           // Konto erstellen falls noch nicht vorhanden (z.B. wenn nur Zahlungen aber keine Fahrten)
           konten[key] = {
             fahrerId: zahlung?.fahrerId,
-            fahrerName: zahlung?.fahrer?.name,
+            fahrerName: getUserDisplayName(zahlung?.fahrer),
             fahrzeugId: zahlung?.fahrzeugId,
             fahrzeugName: zahlung?.fahrzeug?.name,
             schulden: 0,
@@ -675,7 +675,7 @@ export default function AbrechnungPage() {
                         </h3>
                       </div>
                       <p className="text-sm text-gray-600">
-                        Von: {zahlung?.fahrer?.name} für {zahlung?.fahrzeug?.name}
+                        Von: {getUserDisplayName(zahlung?.fahrer)} für {zahlung?.fahrzeug?.name}
                       </p>
                       <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-700">
                         {zahlungsartLabels[zahlung?.zahlungsart] || zahlung?.zahlungsart}
@@ -835,7 +835,7 @@ export default function AbrechnungPage() {
                         new Map(
                           fahrten
                             ?.filter((f: any) => f?.fahrzeugId === formData.fahrzeugId)
-                            ?.map((f: any) => [f?.fahrerId, { fahrerId: f?.fahrerId, fahrerName: f?.fahrer?.name }])
+                            ?.map((f: any) => [f?.fahrerId, { fahrerId: f?.fahrerId, fahrerName: getUserDisplayName(f?.fahrer) }])
                         ).values()
                       )
                     : [];

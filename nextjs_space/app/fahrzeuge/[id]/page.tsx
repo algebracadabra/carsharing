@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check, Wallet } from 'lucide-react';
-import { formatNumber, formatCurrency } from '@/lib/utils';
+import { formatNumber, formatCurrency, getUserDisplayName } from '@/lib/utils';
 
 export default function FahrzeugDetailPage() {
   const { data: session, status } = useSession() || {};
@@ -542,7 +542,7 @@ export default function FahrzeugDetailPage() {
                 className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 <div>
-                  <p className="font-semibold text-gray-900">{fahrt?.fahrer?.name}</p>
+                  <p className="font-semibold text-gray-900">{getUserDisplayName(fahrt?.fahrer)}</p>
                   <p className="text-sm text-gray-600">
                     {fahrt?.gefahreneKm} km ({fahrt?.startKilometer} - {fahrt?.endKilometer} km)
                   </p>

@@ -60,3 +60,20 @@ export function formatDateTime(date: Date | string | null | undefined): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleString('de-DE', { ...DATE_OPTIONS, ...TIME_OPTIONS });
 }
+
+// ============================================
+// User Display Utilities
+// ============================================
+
+interface UserLike {
+  name?: string | null;
+  email?: string;
+  isActive?: boolean;
+}
+
+// Gibt den Anzeigenamen eines Users zurück, oder "Inaktives Mitglied" wenn deaktiviert
+export function getUserDisplayName(user: UserLike | null | undefined): string {
+  if (!user) return 'Unbekannt';
+  if (user.isActive === false) return 'Inaktives Mitglied';
+  return user.name || user.email || 'Unbekannt';
+}

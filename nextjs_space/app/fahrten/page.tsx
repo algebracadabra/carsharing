@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Route, Plus, Car, AlertCircle, X, Edit, Play, CheckCircle, Clock, ChevronDown, Zap } from 'lucide-react';
-import { formatNumber, formatCurrency } from '@/lib/utils';
+import { formatNumber, formatCurrency, getUserDisplayName } from '@/lib/utils';
 
 export default function FahrtenPage() {
   const { data: session, status } = useSession() || {};
@@ -579,7 +579,7 @@ export default function FahrtenPage() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600">
                         <div>
-                          <span className="font-medium">Fahrer:</span> {fahrt.fahrer?.name}
+                          <span className="font-medium">Fahrer:</span> {getUserDisplayName(fahrt.fahrer)}
                         </div>
                         <div>
                           <span className="font-medium">Strecke:</span> {formatNumber(fahrt.startKilometer)} - {formatNumber(fahrt.endKilometer)} km

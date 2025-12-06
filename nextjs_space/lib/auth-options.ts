@@ -26,6 +26,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Ungültige Anmeldedaten');
         }
 
+        if (!user.isActive) {
+          throw new Error('Ihr Konto wurde deaktiviert. Bitte kontaktieren Sie einen Administrator.');
+        }
+
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password

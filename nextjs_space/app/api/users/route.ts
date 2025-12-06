@@ -29,8 +29,13 @@ export async function GET(request: Request) {
         name: true,
         email: true,
         role: true,
+        isActive: true,
+        deactivatedAt: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: [
+        { isActive: 'desc' },
+        { name: 'asc' },
+      ],
     });
 
     return NextResponse.json(users);
