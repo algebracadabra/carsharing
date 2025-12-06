@@ -44,6 +44,12 @@ export interface Fahrzeug {
   status: FahrzeugStatus;
   createdAt: Date;
   updatedAt: Date;
+  // Lebenszyklus-Felder (nur Admin editierbar)
+  baujahr: number | null;
+  restwert: number | null;
+  erwarteteKmEndOfLife: number | null;
+  erwarteteJahreEndOfLife: number | null;
+  geschaetzteKmProJahr: number | null;
   // Steckbrief-Felder
   versicherungsart: string | null;
   kraftstoffart: string | null;

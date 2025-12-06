@@ -108,6 +108,25 @@ export async function PATCH(
       sonstigeHinweise: body.sonstigeHinweise,
     };
 
+    // Lebenszyklus-Felder - nur Admin kann diese bearbeiten
+    if (isAdmin) {
+      if (body.baujahr !== undefined) {
+        updateData.baujahr = body.baujahr !== '' ? parseInt(body.baujahr) : null;
+      }
+      if (body.restwert !== undefined) {
+        updateData.restwert = body.restwert !== '' ? parseFloat(body.restwert) : null;
+      }
+      if (body.erwarteteKmEndOfLife !== undefined) {
+        updateData.erwarteteKmEndOfLife = body.erwarteteKmEndOfLife !== '' ? parseInt(body.erwarteteKmEndOfLife) : null;
+      }
+      if (body.erwarteteJahreEndOfLife !== undefined) {
+        updateData.erwarteteJahreEndOfLife = body.erwarteteJahreEndOfLife !== '' ? parseInt(body.erwarteteJahreEndOfLife) : null;
+      }
+      if (body.geschaetzteKmProJahr !== undefined) {
+        updateData.geschaetzteKmProJahr = body.geschaetzteKmProJahr !== '' ? parseInt(body.geschaetzteKmProJahr) : null;
+      }
+    }
+
     // treibstoffKosten is incremental - add to existing value
     if (body.treibstoffKostenIncrement !== undefined) {
       const increment = parseFloat(body.treibstoffKostenIncrement);

@@ -129,6 +129,13 @@ model Fahrzeug {
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
 
+  // Lebenszyklus-Felder (nur Admin editierbar)
+  baujahr                 Int?           // z.B. 2018
+  restwert                Float?         // Aktueller Restwert in Euro
+  erwarteteKmEndOfLife    Int?           // Erwartete Gesamtkilometer bei End of Life
+  erwarteteJahreEndOfLife Int?           // Erwartetes Alter bei End of Life
+  geschaetzteKmProJahr    Int?           // Geschätzte Kilometer pro Jahr
+
   // Steckbrief-Felder
   versicherungsart        String?        // z.B. Haftpflicht, Teilkasko, Vollkasko
   kraftstoffart           String?        // z.B. Benzin, Diesel, Elektro, Hybrid

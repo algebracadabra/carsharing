@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check, Wallet, FileText, Droplets, Thermometer, Users, CircleDot, Baby, AlertTriangle, Shield, Info } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check, Wallet, FileText, Droplets, Thermometer, Users, CircleDot, Baby, AlertTriangle, Shield, Info, ChevronDown, ChevronUp, Clock, Euro } from 'lucide-react';
 import { formatNumber, formatCurrency, getUserDisplayName } from '@/lib/utils';
 import { WartungSection } from '@/components/wartung-section';
 
@@ -27,6 +27,11 @@ export default function FahrzeugDetailPage() {
     wartungsReparaturKostenIncrement: '',
   });
   const [kontostand, setKontostand] = useState<any>(null);
+  
+  // Einklappbare Sektionen
+  const [showLebenszyklus, setShowLebenszyklus] = useState(false);
+  const [showSteckbrief, setShowSteckbrief] = useState(false);
+  const [showKontostand, setShowKontostand] = useState(false);
 
   const zahlungsartLabels: Record<string, string> = {
     BAR: 'Bar',
@@ -419,14 +424,130 @@ export default function FahrzeugDetailPage() {
         )}
       </div>
 
-      {/* Steckbrief Section */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div className="flex items-center gap-2 mb-6">
-          <FileText className="w-5 h-5 text-gray-700" aria-hidden="true" />
-          <h2 className="text-xl font-bold text-gray-900">Fahrzeug-Steckbrief</h2>
-        </div>
+      {/* Lebenszyklus Section - einklappbar */}
+      <div className="bg-white rounded-lg shadow-md mb-8 overflow-hidden">
+        <button
+          onClick={() => setShowLebenszyklus(!showLebenszyklus)}
+          className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-gray-700" aria-hidden="true" />
+            <h2 className="text-xl font-bold text-gray-900">Lebenszyklus & Wertentwicklung</h2>
+          </div>
+          {showLebenszyklus ? (
+            <ChevronUp className="w-5 h-5 text-gray-500" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-gray-500" />
+          )}
+        </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {showLebenszyklus && (
+          <div className="px-6 pb-6 border-t border-gray-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+              {/* Baujahr & Alter */}
+              <div className="bg-indigo-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Calendar className="w-4 h-4 text-indigo-600" aria-hidden="true" />
+                  <span className="text-sm font-medium text-indigo-700">Baujahr / Alter</span>
+                </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {fahrzeug?.baujahr ? (
+                    <>
+                      {fahrzeug.baujahr}
+                      <span className="text-sm font-normal text-gray-500 ml-2">
+                        ({new Date().getFullYear() - fahrzeug.baujahr} Jahre alt)
+                      </span>
+                    </>
+                  ) : '–'}
+                </p>
+              </div>
+
+              {/* Restwert */}
+              <div className="bg-emerald-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Euro className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+                  <span className="text-sm font-medium text-emerald-700">Restwert</span>
+                </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {fahrzeug?.restwert ? `${formatCurrency(fahrzeug.restwert)} €` : '–'}
+                </p>
+              </div>
+
+              {/* Geschätzte km/Jahr */}
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="w-4 h-4 text-blue-600" aria-hidden="true" />
+                  <span className="text-sm font-medium text-blue-700">Geschätzte km/Jahr</span>
+                </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {fahrzeug?.geschaetzteKmProJahr ? `${formatNumber(fahrzeug.geschaetzteKmProJahr)} km` : '–'}
+                </p>
+              </div>
+
+              {/* Erwartete km End of Life */}
+              <div className="bg-orange-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Route className="w-4 h-4 text-orange-600" aria-hidden="true" />
+                  <span className="text-sm font-medium text-orange-700">Erwartete km (End of Life)</span>
+                </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {fahrzeug?.erwarteteKmEndOfLife ? (
+                    <>
+                      {formatNumber(fahrzeug.erwarteteKmEndOfLife)} km
+                      {fahrzeug?.kilometerstand && (
+                        <span className="text-sm font-normal text-gray-500 ml-2">
+                          (noch {formatNumber(fahrzeug.erwarteteKmEndOfLife - fahrzeug.kilometerstand)} km)
+                        </span>
+                      )}
+                    </>
+                  ) : '–'}
+                </p>
+              </div>
+
+              {/* Erwartetes Alter End of Life */}
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock className="w-4 h-4 text-purple-600" aria-hidden="true" />
+                  <span className="text-sm font-medium text-purple-700">Erwartetes Alter (End of Life)</span>
+                </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {fahrzeug?.erwarteteJahreEndOfLife ? (
+                    <>
+                      {fahrzeug.erwarteteJahreEndOfLife} Jahre
+                      {fahrzeug?.baujahr && (
+                        <span className="text-sm font-normal text-gray-500 ml-2">
+                          (noch {fahrzeug.erwarteteJahreEndOfLife - (new Date().getFullYear() - fahrzeug.baujahr)} Jahre)
+                        </span>
+                      )}
+                    </>
+                  ) : '–'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Steckbrief Section - einklappbar */}
+      <div className="bg-white rounded-lg shadow-md mb-8 overflow-hidden">
+        <button
+          onClick={() => setShowSteckbrief(!showSteckbrief)}
+          className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-gray-700" aria-hidden="true" />
+            <h2 className="text-xl font-bold text-gray-900">Fahrzeug-Steckbrief</h2>
+          </div>
+          {showSteckbrief ? (
+            <ChevronUp className="w-5 h-5 text-gray-500" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-gray-500" />
+          )}
+        </button>
+
+        {showSteckbrief && (
+        <div className="px-6 pb-6 border-t border-gray-100">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
           {/* Versicherungsart */}
           <div className="bg-teal-50 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-1">
@@ -584,6 +705,8 @@ export default function FahrzeugDetailPage() {
             </div>
           )}
         </div>
+        </div>
+        )}
       </div>
 
       {/* Wartung Section */}
@@ -593,16 +716,33 @@ export default function FahrzeugDetailPage() {
         canEdit={canEdit}
       />
 
-      {/* Kontostand Section */}
+      {/* Kontostand Section - einklappbar */}
       {kontostand && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Wallet className="w-5 h-5 text-gray-700" aria-hidden="true" />
-            <h2 className="text-xl font-bold text-gray-900">Kontostand</h2>
-          </div>
+        <div className="bg-white rounded-lg shadow-md mb-8 overflow-hidden">
+          <button
+            onClick={() => setShowKontostand(!showKontostand)}
+            className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-gray-700" aria-hidden="true" />
+              <h2 className="text-xl font-bold text-gray-900">Kontostand</h2>
+              <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
+                kontostand.saldo > 0 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'
+              }`}>
+                {formatCurrency(kontostand.saldo)} €
+              </span>
+            </div>
+            {showKontostand ? (
+              <ChevronUp className="w-5 h-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-500" />
+            )}
+          </button>
 
+          {showKontostand && (
+          <div className="px-6 pb-6 border-t border-gray-100">
           {/* Übersichts-Karten */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div className="bg-blue-50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-1">
                 <TrendingUp className="w-4 h-4 text-blue-600" aria-hidden="true" />
@@ -731,6 +871,8 @@ export default function FahrzeugDetailPage() {
               </div>
             )) ?? null}
           </div>
+          </div>
+          )}
         </div>
       )}
     </div>

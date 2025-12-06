@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Upload, AlertCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Upload, AlertCircle, FileText, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BearbeitenFahrzeugPage() {
@@ -23,6 +23,12 @@ export default function BearbeitenFahrzeugPage() {
     schluesselablageort: '',
     status: 'VERFUEGBAR',
     foto: '',
+    // Lebenszyklus-Felder (nur Admin)
+    baujahr: '',
+    restwert: '',
+    erwarteteKmEndOfLife: '',
+    erwarteteJahreEndOfLife: '',
+    geschaetzteKmProJahr: '',
     // Steckbrief-Felder
     versicherungsart: '',
     kraftstoffart: '',
@@ -67,6 +73,12 @@ export default function BearbeitenFahrzeugPage() {
           schluesselablageort: data.schluesselablageort,
           status: data.status,
           foto: data.foto || '',
+          // Lebenszyklus-Felder
+          baujahr: data.baujahr?.toString() || '',
+          restwert: data.restwert?.toString() || '',
+          erwarteteKmEndOfLife: data.erwarteteKmEndOfLife?.toString() || '',
+          erwarteteJahreEndOfLife: data.erwarteteJahreEndOfLife?.toString() || '',
+          geschaetzteKmProJahr: data.geschaetzteKmProJahr?.toString() || '',
           // Steckbrief-Felder
           versicherungsart: data.versicherungsart || '',
           kraftstoffart: data.kraftstoffart || '',
@@ -297,6 +309,98 @@ export default function BearbeitenFahrzeugPage() {
               <option value="AUSSER_BETRIEB">Außer Betrieb</option>
             </select>
           </div>
+
+          {/* Lebenszyklus Section - nur für Admin */}
+          {userRole === 'ADMIN' && (
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <div className="flex items-center gap-2 mb-6">
+                <TrendingUp className="w-5 h-5 text-gray-700" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-gray-900">Lebenszyklus (nur Admin)</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                  <label htmlFor="baujahr" className="block text-sm font-medium text-gray-700 mb-2">
+                    Baujahr
+                  </label>
+                  <input
+                    id="baujahr"
+                    type="number"
+                    min="1900"
+                    max={new Date().getFullYear()}
+                    placeholder="z.B. 2018"
+                    value={formData.baujahr}
+                    onChange={(e) => setFormData({ ...formData, baujahr: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="restwert" className="block text-sm font-medium text-gray-700 mb-2">
+                    Restwert (€)
+                  </label>
+                  <input
+                    id="restwert"
+                    type="number"
+                    min="0"
+                    step="100"
+                    placeholder="z.B. 5000"
+                    value={formData.restwert}
+                    onChange={(e) => setFormData({ ...formData, restwert: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="geschaetzteKmProJahr" className="block text-sm font-medium text-gray-700 mb-2">
+                    Geschätzte km/Jahr
+                  </label>
+                  <input
+                    id="geschaetzteKmProJahr"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    placeholder="z.B. 15000"
+                    value={formData.geschaetzteKmProJahr}
+                    onChange={(e) => setFormData({ ...formData, geschaetzteKmProJahr: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="erwarteteKmEndOfLife" className="block text-sm font-medium text-gray-700 mb-2">
+                    Erwartete km (End of Life)
+                  </label>
+                  <input
+                    id="erwarteteKmEndOfLife"
+                    type="number"
+                    min="0"
+                    step="10000"
+                    placeholder="z.B. 250000"
+                    value={formData.erwarteteKmEndOfLife}
+                    onChange={(e) => setFormData({ ...formData, erwarteteKmEndOfLife: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="erwarteteJahreEndOfLife" className="block text-sm font-medium text-gray-700 mb-2">
+                    Erwartetes Alter (Jahre)
+                  </label>
+                  <input
+                    id="erwarteteJahreEndOfLife"
+                    type="number"
+                    min="0"
+                    max="50"
+                    placeholder="z.B. 15"
+                    value={formData.erwarteteJahreEndOfLife}
+                    onChange={(e) => setFormData({ ...formData, erwarteteJahreEndOfLife: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Steckbrief Section */}
           <div className="border-t border-gray-200 pt-6 mt-6">
