@@ -8,6 +8,7 @@ import {
   requireAuth,
   parseIntSafe,
 } from '@/lib/api-utils';
+import { getGueltigeKilometerpauschale } from '@/lib/kilometerpauschale';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,12 @@ export async function PUT(
       }
 
       const gefahreneKm = end - start;
-      const kosten = gefahreneKm * existingFahrt.fahrzeug.kilometerpauschale;
+      // Verwende die zum Fahrtdatum gültige Kilometerpauschale
+      const gueltigePauschale = await getGueltigeKilometerpauschale(
+        existingFahrt.fahrzeugId,
+        existingFahrt.createdAt // Fahrtbeginn als Referenzdatum
+      );
+      const kosten = gefahreneKm * gueltigePauschale;
 
       // Update the trip to completed
       const updatedFahrt = await prisma.fahrt.update({
@@ -99,7 +105,12 @@ export async function PUT(
     }
 
     const gefahreneKm = end - start;
-    const kosten = gefahreneKm * existingFahrt.fahrzeug.kilometerpauschale;
+    // Verwende die zum Fahrtdatum gültige Kilometerpauschale
+    const gueltigePauschale = await getGueltigeKilometerpauschale(
+      existingFahrt.fahrzeugId,
+      existingFahrt.createdAt // Fahrtbeginn als Referenzdatum
+    );
+    const kosten = gefahreneKm * gueltigePauschale;
 
     // Check for kilometer conflict with vehicle's current reading
     const kilometerKonflikt = start !== existingFahrt.fahrzeug.kilometerstand;

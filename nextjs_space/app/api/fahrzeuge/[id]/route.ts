@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { setKilometerpauschale, getFirstOfMonth, getFirstOfNextMonth } from '@/lib/kilometerpauschale';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,14 +77,61 @@ export async function PATCH(
       return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 });
     }
 
+    // Kilometerpauschale-Änderung separat behandeln (nur zum Monatsersten)
+    const neueKilometerpauschale = body.kilometerpauschale 
+      ? parseFloat(body.kilometerpauschale) 
+      : undefined;
+    
+    if (neueKilometerpauschale !== undefined && neueKilometerpauschale !== fahrzeug.kilometerpauschale) {
+      // Bestimme das Gültigkeitsdatum (entweder angegeben oder nächster Monatserster)
+      let gueltigAb: Date;
+      
+      if (body.kilometerpauschaleGueltigAb) {
+        gueltigAb = new Date(body.kilometerpauschaleGueltigAb);
+      } else {
+        // Standard: Nächster Monatserster (oder aktueller, wenn heute der 1. ist)
+        const heute = new Date();
+        const ersterDesMonats = getFirstOfMonth(heute);
+        
+        // Wenn heute der 1. ist, gilt die Änderung ab heute, sonst ab nächstem Monat
+        if (heute.getDate() === 1) {
+          gueltigAb = ersterDesMonats;
+        } else {
+          gueltigAb = getFirstOfNextMonth(heute);
+        }
+      }
+      
+      try {
+        // Erstelle Historieneintrag
+        await setKilometerpauschale(params.id, neueKilometerpauschale, gueltigAb);
+        
+        // Aktualisiere auch die aktuelle Pauschale im Fahrzeug (für Anzeige)
+        // Dies ist die "geplante" Pauschale, die ab gueltigAb gilt
+      } catch (error: any) {
+        return NextResponse.json({ 
+          error: error.message || 'Fehler bei der Kilometerpauschale-Änderung' 
+        }, { status: 400 });
+      }
+    }
+
     // Owner und Admin können alles bearbeiten
     let updateData: any = {
       name: body.name,
       foto: body.foto,
       kilometerstand: body.kilometerstand ? parseInt(body.kilometerstand) : undefined,
-      kilometerpauschale: body.kilometerpauschale
-        ? parseFloat(body.kilometerpauschale)
-        : undefined,
+      // Kilometerpauschale wird nur aktualisiert wenn die Änderung sofort gilt (1. des Monats)
+      kilometerpauschale: (() => {
+        if (neueKilometerpauschale === undefined) return undefined;
+        const heute = new Date();
+        const ersterDesMonats = getFirstOfMonth(heute);
+        // Nur aktualisieren wenn heute der 1. ist oder explizit der aktuelle Monat angegeben wurde
+        if (heute.getDate() === 1 || 
+            (body.kilometerpauschaleGueltigAb && 
+             new Date(body.kilometerpauschaleGueltigAb) <= heute)) {
+          return neueKilometerpauschale;
+        }
+        return undefined;
+      })(),
       schluesselablageort: body.schluesselablageort,
       status: body.status,
       fixkosten: body.fixkosten !== undefined

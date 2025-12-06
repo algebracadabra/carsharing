@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Upload, AlertCircle, FileText, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Upload, AlertCircle, FileText, TrendingUp, Info } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BearbeitenFahrzeugPage() {
@@ -16,6 +16,7 @@ export default function BearbeitenFahrzeugPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [originalKilometerpauschale, setOriginalKilometerpauschale] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     kilometerstand: '',
@@ -49,6 +50,20 @@ export default function BearbeitenFahrzeugPage() {
   const userRole = (session?.user as any)?.role;
   const userId = (session?.user as any)?.id;
 
+  // Berechne das Gültigkeitsdatum für Kilometerpauschale-Änderungen
+  const getGueltigkeitsDatum = (): string => {
+    const heute = new Date();
+    if (heute.getDate() === 1) {
+      // Heute ist der 1. - Änderung gilt sofort
+      return heute.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+    // Nächster Monatserster
+    const naechsterMonat = new Date(heute.getFullYear(), heute.getMonth() + 1, 1);
+    return naechsterMonat.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const pauschaleGeaendert = formData.kilometerpauschale !== originalKilometerpauschale && originalKilometerpauschale !== '';
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
@@ -66,10 +81,12 @@ export default function BearbeitenFahrzeugPage() {
       const response = await fetch(`/api/fahrzeuge/${id}`);
       if (response.ok) {
         const data = await response.json();
+        const pauschaleStr = data.kilometerpauschale.toString();
+        setOriginalKilometerpauschale(pauschaleStr);
         setFormData({
           name: data.name,
           kilometerstand: data.kilometerstand.toString(),
-          kilometerpauschale: data.kilometerpauschale.toString(),
+          kilometerpauschale: pauschaleStr,
           schluesselablageort: data.schluesselablageort,
           status: data.status,
           foto: data.foto || '',
@@ -275,6 +292,17 @@ export default function BearbeitenFahrzeugPage() {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               aria-required="true"
             />
+            {pauschaleGeaendert && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium">Änderung gilt ab {getGueltigkeitsDatum()}</p>
+                  <p className="text-blue-600 mt-1">
+                    Bereits berechnete Fahrten bleiben unberührt. Die neue Pauschale wird nur für Fahrten verwendet, die ab dem Gültigkeitsdatum beginnen.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>

@@ -158,6 +158,7 @@ model Fahrzeug {
   zahlungen           Zahlung[]
   wartungsIntervalle  WartungsIntervall[]
   wartungsTasks       WartungsTask[]
+  kilometerpauschaleHistorie KilometerpauschaleHistorie[]
 }
 
 model Buchung {
@@ -250,4 +251,17 @@ model WartungsTask {
   wartungsIntervall   WartungsIntervall?  @relation(fields: [wartungsIntervallId], references: [id], onDelete: SetNull)
   erledigtVon         User?               @relation("TaskErledigtVon", fields: [erledigtVonId], references: [id], onDelete: SetNull)
   zugewiesenAn        User?               @relation("TaskZugewiesenAn", fields: [zugewiesenAnId], references: [id], onDelete: SetNull)
+}
+
+// Historie der Kilometerpauschalen - Änderungen nur zum Monatsersten möglich
+model KilometerpauschaleHistorie {
+  id            String    @id @default(cuid())
+  fahrzeugId    String
+  pauschale     Float     // Kilometerpauschale in €/km
+  gueltigAb     DateTime  // Immer der 1. eines Monats
+  createdAt     DateTime  @default(now())
+
+  fahrzeug      Fahrzeug  @relation(fields: [fahrzeugId], references: [id], onDelete: Cascade)
+
+  @@index([fahrzeugId, gueltigAb])
 }
