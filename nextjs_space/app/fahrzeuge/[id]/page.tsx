@@ -5,8 +5,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check, Wallet } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, MapPin, TrendingUp, DollarSign, Key, Car, Calendar, Route, Fuel, Wrench, PiggyBank, X, Check, Wallet, FileText, Droplets, Thermometer, Users, CircleDot, Baby, AlertTriangle, Shield, Info } from 'lucide-react';
 import { formatNumber, formatCurrency, getUserDisplayName } from '@/lib/utils';
+import { WartungSection } from '@/components/wartung-section';
 
 export default function FahrzeugDetailPage() {
   const { data: session, status } = useSession() || {};
@@ -417,6 +418,180 @@ export default function FahrzeugDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Steckbrief Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="flex items-center gap-2 mb-6">
+          <FileText className="w-5 h-5 text-gray-700" aria-hidden="true" />
+          <h2 className="text-xl font-bold text-gray-900">Fahrzeug-Steckbrief</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Versicherungsart */}
+          <div className="bg-teal-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Shield className="w-4 h-4 text-teal-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-teal-700">Versicherungsart</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900">
+              {fahrzeug?.versicherungsart || '–'}
+            </p>
+          </div>
+
+          {/* Kraftstoffart */}
+          <div className="bg-amber-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Fuel className="w-4 h-4 text-amber-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-amber-700">Kraftstoffart</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900">
+              {fahrzeug?.kraftstoffart || '–'}
+            </p>
+          </div>
+
+          {/* Aktuelle Reifen */}
+          <div className="bg-slate-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <CircleDot className="w-4 h-4 text-slate-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-slate-700">Aktuelle Reifen</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900">
+              {fahrzeug?.aktuelleReifen || '–'}
+            </p>
+          </div>
+
+          {/* Nächster Ölwechsel */}
+          <div className="bg-yellow-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Droplets className="w-4 h-4 text-yellow-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-yellow-700">Nächster Ölwechsel</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900">
+              {fahrzeug?.naechsterOelwechsel || '–'}
+            </p>
+          </div>
+
+          {/* Reinigungszyklus */}
+          <div className="bg-cyan-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Droplets className="w-4 h-4 text-cyan-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-cyan-700">Reinigungszyklus</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900">
+              {fahrzeug?.reinigungszyklus || '–'}
+            </p>
+          </div>
+
+          {/* Motoröl-Typ */}
+          <div className="bg-orange-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Droplets className="w-4 h-4 text-orange-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-orange-700">Motoröl-Typ</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900">
+              {fahrzeug?.motoroelTyp || '–'}
+            </p>
+          </div>
+
+          {/* Kühler-Frostschutz-Typ */}
+          <div className="bg-sky-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Thermometer className="w-4 h-4 text-sky-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-sky-700">Kühler-Frostschutz</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900">
+              {fahrzeug?.kuehlerFrostschutzTyp || '–'}
+            </p>
+          </div>
+
+          {/* Anzahl Sitze */}
+          <div className="bg-violet-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="w-4 h-4 text-violet-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-violet-700">Anzahl Sitze</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900">
+              {fahrzeug?.anzahlSitze ?? '–'}
+            </p>
+          </div>
+
+          {/* Anhängerkupplung */}
+          <div className={`rounded-lg p-4 ${fahrzeug?.anhaengerkupplung ? 'bg-green-50' : 'bg-gray-50'}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <Car className="w-4 h-4 text-gray-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-gray-700">Anhängerkupplung</span>
+            </div>
+            <p className={`text-lg font-semibold ${fahrzeug?.anhaengerkupplung ? 'text-green-700' : 'text-gray-500'}`}>
+              {fahrzeug?.anhaengerkupplung ? 'Ja' : 'Nein'}
+            </p>
+          </div>
+
+          {/* Kindersitz */}
+          <div className={`rounded-lg p-4 ${fahrzeug?.kindersitz ? 'bg-green-50' : 'bg-gray-50'}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <Baby className="w-4 h-4 text-gray-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-gray-700">Kindersitz</span>
+            </div>
+            <p className={`text-lg font-semibold ${fahrzeug?.kindersitz ? 'text-green-700' : 'text-gray-500'}`}>
+              {fahrzeug?.kindersitz ? 'Ja' : 'Nein'}
+            </p>
+          </div>
+
+          {/* Nächster TÜV */}
+          <div className="bg-emerald-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Shield className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-emerald-700">Nächster TÜV</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900">
+              {fahrzeug?.naechsterTuev || '–'}
+            </p>
+          </div>
+        </div>
+
+        {/* Defekte, Macken, Sonstige Hinweise - volle Breite */}
+        <div className="mt-4 space-y-4">
+          {/* Defekte */}
+          {fahrzeug?.defekte && (
+            <div className="bg-red-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-red-600" aria-hidden="true" />
+                <span className="text-sm font-medium text-red-700">Bekannte Defekte</span>
+              </div>
+              <p className="text-gray-900 whitespace-pre-wrap">{fahrzeug.defekte}</p>
+            </div>
+          )}
+
+          {/* Macken */}
+          {fahrzeug?.macken && (
+            <div className="bg-amber-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600" aria-hidden="true" />
+                <span className="text-sm font-medium text-amber-700">Bekannte Macken</span>
+              </div>
+              <p className="text-gray-900 whitespace-pre-wrap">{fahrzeug.macken}</p>
+            </div>
+          )}
+
+          {/* Sonstige Hinweise */}
+          {fahrzeug?.sonstigeHinweise && (
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="w-4 h-4 text-blue-600" aria-hidden="true" />
+                <span className="text-sm font-medium text-blue-700">Sonstige Hinweise</span>
+              </div>
+              <p className="text-gray-900 whitespace-pre-wrap">{fahrzeug.sonstigeHinweise}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Wartung Section */}
+      <WartungSection
+        fahrzeugId={id}
+        fahrzeugKilometerstand={fahrzeug?.kilometerstand || 0}
+        canEdit={canEdit}
+      />
 
       {/* Kontostand Section */}
       {kontostand && (

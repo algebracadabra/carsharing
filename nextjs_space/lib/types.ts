@@ -14,6 +14,8 @@ export type ZahlungStatus = 'AUSSTEHEND' | 'BESTAETIGT';
 
 export type ZahlungsArt = 'BAR' | 'TANKEN' | 'PFLEGE' | 'WARTUNG' | 'REPARATUR';
 
+export type WartungsIntervallTyp = 'KILOMETER' | 'WOCHEN' | 'MONATE' | 'JAEHRLICH';
+
 // ============================================
 // Base Types
 // ============================================
@@ -42,6 +44,21 @@ export interface Fahrzeug {
   status: FahrzeugStatus;
   createdAt: Date;
   updatedAt: Date;
+  // Steckbrief-Felder
+  versicherungsart: string | null;
+  kraftstoffart: string | null;
+  aktuelleReifen: string | null;
+  naechsterOelwechsel: string | null;
+  reinigungszyklus: string | null;
+  motoroelTyp: string | null;
+  kuehlerFrostschutzTyp: string | null;
+  anzahlSitze: number | null;
+  anhaengerkupplung: boolean;
+  kindersitz: boolean;
+  defekte: string | null;
+  naechsterTuev: string | null;
+  macken: string | null;
+  sonstigeHinweise: string | null;
 }
 
 export interface Buchung {
@@ -112,6 +129,46 @@ export interface ZahlungWithRelations extends Zahlung {
   fahrzeug: Fahrzeug;
 }
 
+export interface WartungsIntervall {
+  id: string;
+  fahrzeugId: string;
+  name: string;
+  beschreibung: string | null;
+  intervallTyp: WartungsIntervallTyp;
+  intervallWert: number;
+  monatImJahr: number | null;
+  aktiv: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WartungsTask {
+  id: string;
+  fahrzeugId: string;
+  wartungsIntervallId: string | null;
+  titel: string;
+  beschreibung: string | null;
+  faelligAm: Date | null;
+  faelligBeiKm: number | null;
+  erledigt: boolean;
+  erledigtAm: Date | null;
+  erledigtVonId: string | null;
+  zugewiesenAnId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WartungsIntervallWithTasks extends WartungsIntervall {
+  tasks: WartungsTask[];
+}
+
+export interface WartungsTaskWithRelations extends WartungsTask {
+  fahrzeug: Pick<Fahrzeug, 'id' | 'name' | 'foto' | 'kilometerstand'>;
+  wartungsIntervall: Pick<WartungsIntervall, 'id' | 'name'> | null;
+  erledigtVon: Pick<User, 'id' | 'name'> | null;
+  zugewiesenAn: Pick<User, 'id' | 'name'> | null;
+}
+
 // ============================================
 // Session User Type
 // ============================================
@@ -150,4 +207,26 @@ export const FAHRT_STATUS_LABELS: Record<FahrtStatus, string> = {
 export const ZAHLUNG_STATUS_LABELS: Record<ZahlungStatus, string> = {
   AUSSTEHEND: 'Ausstehend',
   BESTAETIGT: 'Bestätigt',
+};
+
+export const WARTUNGS_INTERVALL_TYP_LABELS: Record<WartungsIntervallTyp, string> = {
+  KILOMETER: 'Kilometer',
+  WOCHEN: 'Wochen',
+  MONATE: 'Monate',
+  JAEHRLICH: 'Jährlich',
+};
+
+export const MONAT_LABELS: Record<number, string> = {
+  1: 'Januar',
+  2: 'Februar',
+  3: 'März',
+  4: 'April',
+  5: 'Mai',
+  6: 'Juni',
+  7: 'Juli',
+  8: 'August',
+  9: 'September',
+  10: 'Oktober',
+  11: 'November',
+  12: 'Dezember',
 };

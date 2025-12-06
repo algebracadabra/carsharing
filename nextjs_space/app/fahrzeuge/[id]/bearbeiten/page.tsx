@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Upload, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Upload, AlertCircle, FileText } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BearbeitenFahrzeugPage() {
@@ -23,6 +23,21 @@ export default function BearbeitenFahrzeugPage() {
     schluesselablageort: '',
     status: 'VERFUEGBAR',
     foto: '',
+    // Steckbrief-Felder
+    versicherungsart: '',
+    kraftstoffart: '',
+    aktuelleReifen: '',
+    naechsterOelwechsel: '',
+    reinigungszyklus: '',
+    motoroelTyp: '',
+    kuehlerFrostschutzTyp: '',
+    anzahlSitze: '',
+    anhaengerkupplung: false,
+    kindersitz: false,
+    defekte: '',
+    naechsterTuev: '',
+    macken: '',
+    sonstigeHinweise: '',
   });
 
   const userRole = (session?.user as any)?.role;
@@ -52,6 +67,21 @@ export default function BearbeitenFahrzeugPage() {
           schluesselablageort: data.schluesselablageort,
           status: data.status,
           foto: data.foto || '',
+          // Steckbrief-Felder
+          versicherungsart: data.versicherungsart || '',
+          kraftstoffart: data.kraftstoffart || '',
+          aktuelleReifen: data.aktuelleReifen || '',
+          naechsterOelwechsel: data.naechsterOelwechsel || '',
+          reinigungszyklus: data.reinigungszyklus || '',
+          motoroelTyp: data.motoroelTyp || '',
+          kuehlerFrostschutzTyp: data.kuehlerFrostschutzTyp || '',
+          anzahlSitze: data.anzahlSitze?.toString() || '',
+          anhaengerkupplung: data.anhaengerkupplung || false,
+          kindersitz: data.kindersitz || false,
+          defekte: data.defekte || '',
+          naechsterTuev: data.naechsterTuev || '',
+          macken: data.macken || '',
+          sonstigeHinweise: data.sonstigeHinweise || '',
         });
 
         // Check permissions - nur Owner oder Admin
@@ -268,7 +298,226 @@ export default function BearbeitenFahrzeugPage() {
             </select>
           </div>
 
-          <div className="flex gap-4 pt-4">
+          {/* Steckbrief Section */}
+          <div className="border-t border-gray-200 pt-6 mt-6">
+            <div className="flex items-center gap-2 mb-6">
+              <FileText className="w-5 h-5 text-gray-700" aria-hidden="true" />
+              <h2 className="text-lg font-semibold text-gray-900">Fahrzeug-Steckbrief</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="versicherungsart" className="block text-sm font-medium text-gray-700 mb-2">
+                  Versicherungsart
+                </label>
+                <select
+                  id="versicherungsart"
+                  value={formData.versicherungsart}
+                  onChange={(e) => setFormData({ ...formData, versicherungsart: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">– Auswählen –</option>
+                  <option value="Haftpflicht">Haftpflicht</option>
+                  <option value="Teilkasko">Teilkasko</option>
+                  <option value="Vollkasko">Vollkasko</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="kraftstoffart" className="block text-sm font-medium text-gray-700 mb-2">
+                  Kraftstoffart
+                </label>
+                <select
+                  id="kraftstoffart"
+                  value={formData.kraftstoffart}
+                  onChange={(e) => setFormData({ ...formData, kraftstoffart: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">– Auswählen –</option>
+                  <option value="Benzin">Benzin</option>
+                  <option value="Diesel">Diesel</option>
+                  <option value="Elektro">Elektro</option>
+                  <option value="Hybrid">Hybrid</option>
+                  <option value="Plug-in-Hybrid">Plug-in-Hybrid</option>
+                  <option value="Erdgas (CNG)">Erdgas (CNG)</option>
+                  <option value="Autogas (LPG)">Autogas (LPG)</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="aktuelleReifen" className="block text-sm font-medium text-gray-700 mb-2">
+                  Aktuelle Reifen
+                </label>
+                <select
+                  id="aktuelleReifen"
+                  value={formData.aktuelleReifen}
+                  onChange={(e) => setFormData({ ...formData, aktuelleReifen: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">– Auswählen –</option>
+                  <option value="Sommerreifen">Sommerreifen</option>
+                  <option value="Winterreifen">Winterreifen</option>
+                  <option value="Ganzjahresreifen">Ganzjahresreifen</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="naechsterOelwechsel" className="block text-sm font-medium text-gray-700 mb-2">
+                  Nächster Ölwechsel
+                </label>
+                <input
+                  id="naechsterOelwechsel"
+                  type="text"
+                  placeholder="z.B. bei 120.000 km oder 03/2025"
+                  value={formData.naechsterOelwechsel}
+                  onChange={(e) => setFormData({ ...formData, naechsterOelwechsel: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="reinigungszyklus" className="block text-sm font-medium text-gray-700 mb-2">
+                  Reinigungszyklus
+                </label>
+                <input
+                  id="reinigungszyklus"
+                  type="text"
+                  placeholder="z.B. monatlich, alle 2 Wochen"
+                  value={formData.reinigungszyklus}
+                  onChange={(e) => setFormData({ ...formData, reinigungszyklus: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="motoroelTyp" className="block text-sm font-medium text-gray-700 mb-2">
+                  Motoröl-Typ
+                </label>
+                <input
+                  id="motoroelTyp"
+                  type="text"
+                  placeholder="z.B. 5W-30, 0W-40"
+                  value={formData.motoroelTyp}
+                  onChange={(e) => setFormData({ ...formData, motoroelTyp: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="kuehlerFrostschutzTyp" className="block text-sm font-medium text-gray-700 mb-2">
+                  Kühler-Frostschutz-Typ
+                </label>
+                <input
+                  id="kuehlerFrostschutzTyp"
+                  type="text"
+                  placeholder="z.B. G12+, G13"
+                  value={formData.kuehlerFrostschutzTyp}
+                  onChange={(e) => setFormData({ ...formData, kuehlerFrostschutzTyp: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="anzahlSitze" className="block text-sm font-medium text-gray-700 mb-2">
+                  Anzahl Sitze
+                </label>
+                <input
+                  id="anzahlSitze"
+                  type="number"
+                  min="1"
+                  max="50"
+                  placeholder="z.B. 5"
+                  value={formData.anzahlSitze}
+                  onChange={(e) => setFormData({ ...formData, anzahlSitze: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="naechsterTuev" className="block text-sm font-medium text-gray-700 mb-2">
+                  Nächster TÜV
+                </label>
+                <input
+                  id="naechsterTuev"
+                  type="text"
+                  placeholder="z.B. 03/2025"
+                  value={formData.naechsterTuev}
+                  onChange={(e) => setFormData({ ...formData, naechsterTuev: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Checkboxen */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={formData.anhaengerkupplung}
+                  onChange={(e) => setFormData({ ...formData, anhaengerkupplung: e.target.checked })}
+                  className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">Anhängerkupplung vorhanden</span>
+              </label>
+
+              <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={formData.kindersitz}
+                  onChange={(e) => setFormData({ ...formData, kindersitz: e.target.checked })}
+                  className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">Kindersitz vorhanden</span>
+              </label>
+            </div>
+
+            {/* Textfelder für längere Eingaben */}
+            <div className="space-y-6 mt-6">
+              <div>
+                <label htmlFor="defekte" className="block text-sm font-medium text-gray-700 mb-2">
+                  Bekannte Defekte
+                </label>
+                <textarea
+                  id="defekte"
+                  rows={3}
+                  placeholder="Beschreiben Sie bekannte Defekte..."
+                  value={formData.defekte}
+                  onChange={(e) => setFormData({ ...formData, defekte: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="macken" className="block text-sm font-medium text-gray-700 mb-2">
+                  Bekannte Macken
+                </label>
+                <textarea
+                  id="macken"
+                  rows={3}
+                  placeholder="Beschreiben Sie bekannte Macken oder Eigenheiten..."
+                  value={formData.macken}
+                  onChange={(e) => setFormData({ ...formData, macken: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="sonstigeHinweise" className="block text-sm font-medium text-gray-700 mb-2">
+                  Sonstige Hinweise
+                </label>
+                <textarea
+                  id="sonstigeHinweise"
+                  rows={4}
+                  placeholder="Weitere wichtige Informationen zum Fahrzeug..."
+                  value={formData.sonstigeHinweise}
+                  onChange={(e) => setFormData({ ...formData, sonstigeHinweise: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-6">
             <button
               type="submit"
               disabled={saving || uploading}

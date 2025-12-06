@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Car, Route, AlertCircle, AlertTriangle, Wallet, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatNumber, formatCurrency, getUserDisplayName } from '@/lib/utils';
 import { VehicleSchedule } from '@/components/vehicle-schedule';
+import { DashboardWartung } from '@/components/dashboard-wartung';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -279,6 +280,11 @@ export default async function DashboardPage() {
       {/* Belegungsübersicht - 3 Tage */}
       <div className="mb-8">
         <VehicleSchedule daysCount={3} compact />
+      </div>
+
+      {/* Wartungsaufgaben */}
+      <div className="mb-8">
+        <DashboardWartung />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

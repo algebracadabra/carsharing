@@ -8,3 +8,6 @@ node_modules/
 
 # Keep example env file
 !.env.example
+
+# Local notes
+git-commands.md

@@ -89,6 +89,23 @@ export async function PATCH(
       fixkosten: body.fixkosten !== undefined
         ? parseFloat(body.fixkosten)
         : undefined,
+      // Steckbrief-Felder
+      versicherungsart: body.versicherungsart,
+      kraftstoffart: body.kraftstoffart,
+      aktuelleReifen: body.aktuelleReifen,
+      naechsterOelwechsel: body.naechsterOelwechsel,
+      reinigungszyklus: body.reinigungszyklus,
+      motoroelTyp: body.motoroelTyp,
+      kuehlerFrostschutzTyp: body.kuehlerFrostschutzTyp,
+      anzahlSitze: body.anzahlSitze !== undefined && body.anzahlSitze !== ''
+        ? parseInt(body.anzahlSitze)
+        : undefined,
+      anhaengerkupplung: body.anhaengerkupplung,
+      kindersitz: body.kindersitz,
+      defekte: body.defekte,
+      naechsterTuev: body.naechsterTuev,
+      macken: body.macken,
+      sonstigeHinweise: body.sonstigeHinweise,
     };
 
     // treibstoffKosten is incremental - add to existing value
