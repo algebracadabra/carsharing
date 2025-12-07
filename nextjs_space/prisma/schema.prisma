@@ -123,6 +123,8 @@ model Fahrzeug {
   treibstoffKosten        Float          @default(0)
   fixkosten               Float          @default(0)
   wartungsReparaturKosten Float          @default(0)
+  versicherungJaehrlich   Float          @default(0)  // Jährliche Versicherungskosten in €
+  steuerJaehrlich         Float          @default(0)  // Jährliche KFZ-Steuer in €
   halterId                String
   schluesselablageort     String
   status                  FahrzeugStatus @default(VERFUEGBAR)

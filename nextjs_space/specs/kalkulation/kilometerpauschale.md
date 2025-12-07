@@ -169,3 +169,77 @@ isAenderungErlaubt(gueltigAbDatum: Date): boolean
 // Historie abrufen
 getKilometerpauschaleHistorie(fahrzeugId: string): Promise<...>
 ```
+
+## Kilometerpauschalen-Empfehlung
+
+### Übersicht
+
+Die Kilometerpauschalen-Empfehlung berechnet eine empfohlene Pauschale basierend auf den tatsächlichen Kosten des Fahrzeugs. Die Empfehlung wird der aktuellen Pauschale **gegenübergestellt**, ohne diese zu überschreiben.
+
+### Berechnungsgrundlage
+
+Die empfohlene Pauschale setzt sich zusammen aus:
+
+| Kostenart | Berechnung |
+|-----------|------------|
+| Treibstoffkosten | Gesamtkosten ÷ gefahrene km |
+| Fixkosten | (Monatliche Fixkosten × 12) ÷ geschätzte km/Jahr |
+| Wartung/Reparatur | Gesamtkosten ÷ gefahrene km |
+| Wertverlust | Aus Lebenszyklus-Berechnung (falls Daten vorhanden) |
+
+### Empfehlungslogik
+
+| Differenz zur aktuellen Pauschale | Empfehlung |
+|-----------------------------------|------------|
+| > +5% | Erhöhung empfohlen |
+| < -5% | Senkung möglich |
+| ±5% | Pauschale passt |
+
+### Einnahmenprognose (tap & hold)
+
+Per **tap & hold** (mobil) oder **hover** (Desktop) wird der Einnahmenunterschied angezeigt:
+
+- Einnahmen mit aktueller Pauschale
+- Einnahmen mit empfohlener Pauschale
+- Differenz (positiv = mehr Einnahmen)
+
+### API
+
+**Endpoint:** `GET /api/fahrzeuge/[id]/empfehlung`
+
+**Query-Parameter:**
+- `zeitraumMonate`: Betrachtungszeitraum (default: 12)
+
+**Response:**
+```json
+{
+  "empfohlenePauschale": 0.32,
+  "aktuellePauschale": 0.25,
+  "differenz": 0.07,
+  "differenzProzent": 28.0,
+  "empfehlung": "erhoehen",
+  "kostenProKm": {
+    "treibstoff": 0.15,
+    "fixkosten": 0.12,
+    "wartungReparatur": 0.05,
+    "wertverlust": 0.00,
+    "gesamt": 0.32
+  },
+  "einnahmenPrognose": {
+    "zeitraumMonate": 12,
+    "mitAktuellerPauschale": 2500.00,
+    "mitEmpfohlenerPauschale": 3200.00,
+    "unterschied": 700.00
+  },
+  "wertverlustVerfuegbar": false
+}
+```
+
+### Implementierte Dateien
+
+| Datei | Beschreibung |
+|-------|--------------|
+| `lib/kilometerpauschale-empfehlung.ts` | Berechnungslogik |
+| `app/api/fahrzeuge/[id]/empfehlung/route.ts` | API-Endpoint |
+| `components/kilometerpauschale-empfehlung.tsx` | Frontend-Komponente |
+| `specs/kalkulation/kilometerpauschale-empfehlung.spec.ts` | Tests |

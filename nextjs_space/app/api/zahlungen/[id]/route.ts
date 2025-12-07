@@ -46,11 +46,37 @@ export async function PATCH(
     });
 
     // Check if both confirmed and update status
-    if (updatedZahlung.bestaetigung_fahrer && updatedZahlung.bestaetigung_halter) {
+    if (updatedZahlung.bestaetigung_fahrer && updatedZahlung.bestaetigung_halter && updatedZahlung.status !== 'BESTAETIGT') {
       await prisma.zahlung.update({
         where: { id: params.id },
         data: { status: 'BESTAETIGT' },
       });
+
+      // Update Fahrzeug-Kosten basierend auf Zahlungsart
+      const zahlungsart = updatedZahlung.zahlungsart;
+      const betrag = updatedZahlung.betrag;
+
+      if (zahlungsart === 'TANKEN') {
+        // Treibstoffkosten erhöhen
+        await prisma.fahrzeug.update({
+          where: { id: updatedZahlung.fahrzeugId },
+          data: {
+            treibstoffKosten: {
+              increment: betrag,
+            },
+          },
+        });
+      } else if (['PFLEGE', 'WARTUNG', 'REPARATUR'].includes(zahlungsart)) {
+        // Wartungs- und Reparaturkosten erhöhen
+        await prisma.fahrzeug.update({
+          where: { id: updatedZahlung.fahrzeugId },
+          data: {
+            wartungsReparaturKosten: {
+              increment: betrag,
+            },
+          },
+        });
+      }
     }
 
     const finalZahlung = await prisma.zahlung.findUnique({

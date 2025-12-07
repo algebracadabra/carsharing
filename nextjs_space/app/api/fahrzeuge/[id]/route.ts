@@ -134,8 +134,12 @@ export async function PATCH(
       })(),
       schluesselablageort: body.schluesselablageort,
       status: body.status,
-      fixkosten: body.fixkosten !== undefined
-        ? parseFloat(body.fixkosten)
+      // Jährliche Fixkosten (Versicherung + Steuer)
+      versicherungJaehrlich: body.versicherungJaehrlich !== undefined
+        ? parseFloat(body.versicherungJaehrlich)
+        : undefined,
+      steuerJaehrlich: body.steuerJaehrlich !== undefined
+        ? parseFloat(body.steuerJaehrlich)
         : undefined,
       // Steckbrief-Felder
       versicherungsart: body.versicherungsart,

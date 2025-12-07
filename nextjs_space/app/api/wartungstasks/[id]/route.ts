@@ -220,7 +220,7 @@ async function createNextTaskFromIntervall(intervall: any, aktuellerKilometersta
   switch (intervall.intervallTyp) {
     case 'KILOMETER':
       faelligBeiKm = aktuellerKilometerstand + intervall.intervallWert;
-      titel = `${intervall.name} bei ${faelligBeiKm.toLocaleString('de-DE')} km`;
+      titel = `${intervall.name} bei ${faelligBeiKm!.toLocaleString('de-DE')} km`;
       break;
     case 'WOCHEN':
       faelligAm = new Date(now.getTime() + intervall.intervallWert * 7 * 24 * 60 * 60 * 1000);
