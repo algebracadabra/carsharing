@@ -190,6 +190,9 @@ export default function BearbeitenFahrzeugPage() {
     );
   }
 
+  // Debug: Zeige aktuelle Rolle
+  console.log('Bearbeiten-Seite - userRole:', userRole, 'session:', session?.user);
+
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Link

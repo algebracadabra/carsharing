@@ -161,6 +161,7 @@ export async function PATCH(
     };
 
     // Lebenszyklus-Felder - nur Admin kann diese bearbeiten
+    console.log('Lebenszyklus-Update Check:', { isAdmin, userRole, baujahr: body.baujahr });
     if (isAdmin) {
       if (body.baujahr !== undefined) {
         updateData.baujahr = body.baujahr !== '' ? parseInt(body.baujahr) : null;

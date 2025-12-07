@@ -24,6 +24,8 @@ export default function FahrzeugDetailPage() {
   const [editingCosts, setEditingCosts] = useState(false);
   const [savingCosts, setSavingCosts] = useState(false);
   const [costFormData, setCostFormData] = useState({
+    treibstoffKostenIncrement: '',
+    wartungsReparaturKostenIncrement: '',
     versicherungJaehrlich: '0',
     steuerJaehrlich: '0',
   });
@@ -108,6 +110,8 @@ export default function FahrzeugDetailPage() {
         berechneWertverlustFuerFahrzeug(data);
         
         setCostFormData({
+          treibstoffKostenIncrement: '',
+          wartungsReparaturKostenIncrement: '',
           versicherungJaehrlich: (data.versicherungJaehrlich ?? 0).toString(),
           steuerJaehrlich: (data.steuerJaehrlich ?? 0).toString(),
         });
@@ -131,6 +135,8 @@ export default function FahrzeugDetailPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          treibstoffKostenIncrement: costFormData.treibstoffKostenIncrement || undefined,
+          wartungsReparaturKostenIncrement: costFormData.wartungsReparaturKostenIncrement || undefined,
           versicherungJaehrlich: costFormData.versicherungJaehrlich,
           steuerJaehrlich: costFormData.steuerJaehrlich,
         }),
@@ -333,6 +339,8 @@ export default function FahrzeugDetailPage() {
                 onClick={() => {
                   setEditingCosts(false);
                   setCostFormData({
+                    treibstoffKostenIncrement: '',
+                    wartungsReparaturKostenIncrement: '',
                     versicherungJaehrlich: (fahrzeug?.versicherungJaehrlich ?? 0).toString(),
                     steuerJaehrlich: (fahrzeug?.steuerJaehrlich ?? 0).toString(),
                   });
@@ -348,32 +356,55 @@ export default function FahrzeugDetailPage() {
 
         {editingCosts ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Treibstoff - disabled, kommt aus Abrechnungen */}
-            <div className="bg-orange-50 rounded-lg p-6 opacity-60">
+            <div className="bg-orange-50 rounded-lg p-6">
               <div className="flex items-center gap-3 mb-2">
                 <Fuel className="w-5 h-5 text-orange-600" aria-hidden="true" />
-                <span className="font-semibold text-gray-900">Treibstoffkosten</span>
+                <label htmlFor="treibstoffKosten" className="font-semibold text-gray-900">Treibstoffkosten hinzufügen</label>
               </div>
-              <p className="text-2xl font-bold text-orange-600">
-                {formatCurrency(fahrzeug?.treibstoffKosten)} €
+              <p className="text-sm text-gray-600 mb-2">
+                Aktuell: {formatCurrency(fahrzeug?.treibstoffKosten)} €
               </p>
-              <p className="text-xs text-gray-500 mt-1">Aus TANKEN-Zahlungen (nicht editierbar)</p>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-orange-600">+</span>
+                <input
+                  id="treibstoffKosten"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={costFormData.treibstoffKostenIncrement}
+                  onChange={(e) => setCostFormData({ ...costFormData, treibstoffKostenIncrement: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-bold"
+                />
+                <span className="text-lg font-bold text-orange-600">€</span>
+              </div>
             </div>
 
-            {/* Wartung - disabled, kommt aus Abrechnungen */}
-            <div className="bg-rose-50 rounded-lg p-6 opacity-60">
+            <div className="bg-rose-50 rounded-lg p-6">
               <div className="flex items-center gap-3 mb-2">
                 <Wrench className="w-5 h-5 text-rose-600" aria-hidden="true" />
-                <span className="font-semibold text-gray-900">Wartung & Reparatur</span>
+                <label htmlFor="wartungsReparaturKosten" className="font-semibold text-gray-900">Wartung & Reparatur hinzufügen</label>
               </div>
-              <p className="text-2xl font-bold text-rose-600">
-                {formatCurrency(fahrzeug?.wartungsReparaturKosten)} €
+              <p className="text-sm text-gray-600 mb-2">
+                Aktuell: {formatCurrency(fahrzeug?.wartungsReparaturKosten)} €
               </p>
-              <p className="text-xs text-gray-500 mt-1">Aus Pflege/Wartung/Reparatur (nicht editierbar)</p>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-rose-600">+</span>
+                <input
+                  id="wartungsReparaturKosten"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={costFormData.wartungsReparaturKostenIncrement}
+                  onChange={(e) => setCostFormData({ ...costFormData, wartungsReparaturKostenIncrement: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-lg font-bold"
+                />
+                <span className="text-lg font-bold text-rose-600">€</span>
+              </div>
             </div>
 
-            {/* Versicherung - editierbar */}
-            <div className="bg-teal-50 rounded-lg p-6 ring-2 ring-teal-400">
+            <div className="bg-teal-50 rounded-lg p-6">
               <div className="flex items-center gap-3 mb-2">
                 <Shield className="w-5 h-5 text-teal-600" aria-hidden="true" />
                 <label htmlFor="versicherungJaehrlich" className="font-semibold text-gray-900">Versicherung jährlich</label>
@@ -392,8 +423,7 @@ export default function FahrzeugDetailPage() {
               </div>
             </div>
 
-            {/* Steuer - editierbar */}
-            <div className="bg-indigo-50 rounded-lg p-6 ring-2 ring-indigo-400">
+            <div className="bg-indigo-50 rounded-lg p-6">
               <div className="flex items-center gap-3 mb-2">
                 <PiggyBank className="w-5 h-5 text-indigo-600" aria-hidden="true" />
                 <label htmlFor="steuerJaehrlich" className="font-semibold text-gray-900">KFZ-Steuer jährlich</label>
@@ -474,20 +504,31 @@ export default function FahrzeugDetailPage() {
 
       {/* Lebenszyklus Section - einklappbar */}
       <div className="bg-white rounded-lg shadow-md mb-8 overflow-hidden">
-        <button
-          onClick={() => setShowLebenszyklus(!showLebenszyklus)}
-          className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-gray-700" aria-hidden="true" />
-            <h2 className="text-xl font-bold text-gray-900">Lebenszyklus & Wertentwicklung</h2>
-          </div>
-          {showLebenszyklus ? (
-            <ChevronUp className="w-5 h-5 text-gray-500" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-gray-500" />
+        <div className="flex items-center justify-between p-6">
+          <button
+            onClick={() => setShowLebenszyklus(!showLebenszyklus)}
+            className="flex-1 flex items-center justify-between hover:bg-gray-50 transition-colors -m-6 p-6"
+          >
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-gray-700" aria-hidden="true" />
+              <h2 className="text-xl font-bold text-gray-900">Lebenszyklus & Wertentwicklung</h2>
+            </div>
+            {showLebenszyklus ? (
+              <ChevronUp className="w-5 h-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-500" />
+            )}
+          </button>
+          {isAdmin && (
+            <Link
+              href={`/fahrzeuge/${id}/bearbeiten`}
+              className="ml-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Lebenszyklus bearbeiten"
+            >
+              <Edit className="w-5 h-5 text-gray-600" aria-hidden="true" />
+            </Link>
           )}
-        </button>
+        </div>
 
         {showLebenszyklus && (
           <div className="px-6 pb-6 border-t border-gray-100">
