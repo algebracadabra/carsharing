@@ -277,9 +277,9 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Belegungsübersicht - 3 Tage */}
+      {/* Belegungsübersicht - 3 Tage mit Tagesauswahl */}
       <div className="mb-8">
-        <VehicleSchedule daysCount={3} compact />
+        <VehicleSchedule daysCount={3} compact showDaysSelector />
       </div>
 
       {/* Wartungsaufgaben */}

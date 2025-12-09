@@ -30,6 +30,29 @@ interface BelegungData {
 
 const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
+// Fixed palette for user-specific booking colors
+const USER_COLOR_CLASSES = [
+  'bg-blue-500',
+  'bg-green-500',
+  'bg-purple-500',
+  'bg-pink-500',
+  'bg-amber-500',
+  'bg-teal-500',
+  'bg-indigo-500',
+  'bg-rose-500',
+];
+
+const getUserColorClass = (userId: string | null | undefined) => {
+  if (!userId) return USER_COLOR_CLASSES[0];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash << 5) - hash + userId.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  const index = Math.abs(hash) % USER_COLOR_CLASSES.length;
+  return USER_COLOR_CLASSES[index];
+};
+
 interface VehicleScheduleProps {
   daysCount?: number;
   showTitle?: boolean;
@@ -194,6 +217,24 @@ export function VehicleSchedule({ daysCount: initialDaysCount = 7, showTitle = t
                 )}
               </div>
 
+              <div className="mt-1 mb-1 flex text-[9px] text-gray-400">
+                <div className="w-16" />
+                <div
+                  className="flex-1 mr-2"
+                  style={{ display: 'grid', gridTemplateColumns: 'repeat(24, 1fr)' }}
+                >
+                  <span style={{ gridColumn: '1 / span 3', justifySelf: 'center' }}>0</span>
+                  <span style={{ gridColumn: '4 / span 3', justifySelf: 'center' }}>3</span>
+                  <span style={{ gridColumn: '7 / span 3', justifySelf: 'center' }}>6</span>
+                  <span style={{ gridColumn: '10 / span 3', justifySelf: 'center' }}>9</span>
+                  <span style={{ gridColumn: '13 / span 3', justifySelf: 'center' }}>12</span>
+                  <span style={{ gridColumn: '16 / span 3', justifySelf: 'center' }}>15</span>
+                  <span style={{ gridColumn: '19 / span 3', justifySelf: 'center' }}>18</span>
+                  <span style={{ gridColumn: '22 / span 3', justifySelf: 'center' }}>21</span>
+                  <span style={{ gridColumn: '24 / span 1', justifySelf: 'end' }}>24</span>
+                </div>
+              </div>
+
               {/* Days Timeline */}
               <div className="p-2 space-y-1">
                 {days.map((day, dayIdx) => {
@@ -235,40 +276,55 @@ export function VehicleSchedule({ daysCount: initialDaysCount = 7, showTitle = t
                       </div>
 
                       {/* Bookings for this day */}
-                      <div className="flex-1 flex items-center gap-1 py-1 pr-2 overflow-x-auto">
-                        {dayBookings.length === 0 ? (
-                          <span className="text-xs text-gray-400">Frei</span>
-                        ) : (
-                          dayBookings.map((buchung) => {
-                            const startTime = new Date(buchung.startZeit);
-                            const endTime = new Date(buchung.endZeit);
-                            const startsToday = startTime.toDateString() === day.toDateString();
-                            const endsToday = endTime.toDateString() === day.toDateString();
-
-                            return (
-                              <div
-                                key={buchung.id}
-                                className={cn(
-                                  'flex-shrink-0 px-2 py-1 rounded text-xs text-white',
-                                  buchung.status === 'LAUFEND' ? 'bg-green-500' : 'bg-blue-500'
-                                )}
-                              >
-                                <div className="font-medium truncate max-w-[100px]">
-                                  {buchung.user.name?.split(' ')[0] || 'Unbekannt'}
-                                </div>
-                                <div className="text-[10px] opacity-90">
-                                  {startsToday
-                                    ? startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-                                    : '00:00'}
-                                  {' - '}
-                                  {endsToday
-                                    ? endTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-                                    : '24:00'}
-                                </div>
-                              </div>
-                            );
-                          })
+                      <div className="relative flex-1 py-1 pr-2">
+                        <div
+                          className="absolute inset-0 pointer-events-none rounded-r-md overflow-hidden"
+                          style={{ display: 'grid', gridTemplateColumns: 'repeat(24, 1fr)' }}
+                        >
+                          {Array.from({ length: 24 }).map((_, hour) => (
+                            <div
+                              key={hour}
+                              className={cn(
+                                'h-full border-l border-gray-100',
+                                hour >= 18 || hour < 6 ? 'bg-gray-100' : 'bg-gray-50'
+                              )}
+                            />
+                          ))}
+                        </div>
+                        {dayBookings.length === 0 && (
+                          <span className="relative z-10 text-xs text-gray-400">Frei</span>
                         )}
+                        {dayBookings.map((buchung) => {
+                          const style = getBookingStyle(buchung, day);
+                          const startTime = new Date(buchung.startZeit);
+                          const endTime = new Date(buchung.endZeit);
+                          const startsToday = startTime.toDateString() === day.toDateString();
+                          const endsToday = endTime.toDateString() === day.toDateString();
+
+                          return (
+                            <div
+                              key={buchung.id}
+                              className={cn(
+                                'absolute top-1 bottom-1 rounded-sm text-[10px] text-white flex items-center px-1 truncate',
+                                getUserColorClass(buchung.user.id)
+                              )}
+                              style={style}
+                            >
+                              <span className="font-medium mr-1 truncate">
+                                {buchung.user.name?.split(' ')[0] || 'Unbekannt'}
+                              </span>
+                              <span className="opacity-90 truncate">
+                                {startsToday
+                                  ? startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+                                  : '00:00'}
+                                {' - '}
+                                {endsToday
+                                  ? endTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+                                  : '24:00'}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -316,6 +372,19 @@ export function VehicleSchedule({ daysCount: initialDaysCount = 7, showTitle = t
               >
                 {formatDate(day)}
               </div>
+              {daysCount === 3 && (
+                <div className="mt-1 flex justify-between text-[9px] text-gray-400">
+                  <span>0</span>
+                  <span>3</span>
+                  <span>6</span>
+                  <span>9</span>
+                  <span>12</span>
+                  <span>15</span>
+                  <span>18</span>
+                  <span>21</span>
+                  <span>24</span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -349,6 +418,22 @@ export function VehicleSchedule({ daysCount: initialDaysCount = 7, showTitle = t
                       isToday(day) && 'bg-blue-50/50'
                     )}
                   >
+                    {daysCount === 3 && (
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ display: 'grid', gridTemplateColumns: 'repeat(24, 1fr)' }}
+                      >
+                        {Array.from({ length: 24 }).map((_, hour) => (
+                          <div
+                            key={hour}
+                            className={cn(
+                              'h-full border-l border-gray-100',
+                              hour >= 18 || hour < 6 ? 'bg-gray-100' : 'bg-gray-50'
+                            )}
+                          />
+                        ))}
+                      </div>
+                    )}
                     {bookings.map((buchung) => {
                       const style = getBookingStyle(buchung, day);
                       return (
@@ -356,7 +441,7 @@ export function VehicleSchedule({ daysCount: initialDaysCount = 7, showTitle = t
                           key={buchung.id}
                           className={cn(
                             'absolute top-1 bottom-1 rounded-sm cursor-pointer transition-all hover:opacity-80',
-                            buchung.status === 'LAUFEND' ? 'bg-green-500' : 'bg-blue-500'
+                            getUserColorClass(buchung.user.id)
                           )}
                           style={style}
                           title={`${buchung.user.name || 'Unbekannt'}\n${new Date(buchung.startZeit).toLocaleString('de-DE')} - ${new Date(buchung.endZeit).toLocaleString('de-DE')}`}
@@ -417,21 +502,6 @@ export function VehicleSchedule({ daysCount: initialDaysCount = 7, showTitle = t
 
       {/* Desktop View */}
       {renderDesktopView()}
-
-      {/* Legend */}
-      <div className={cn(
-        "border-t border-gray-200 bg-gray-50 flex items-center gap-4 text-xs",
-        compact ? "p-2" : "p-3"
-      )}>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
-          <span className="text-gray-600">Geplant</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-green-500"></div>
-          <span className="text-gray-600">Laufend</span>
-        </div>
-      </div>
     </div>
   );
 }
