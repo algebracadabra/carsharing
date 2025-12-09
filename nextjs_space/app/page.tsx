@@ -47,12 +47,17 @@ export default async function DashboardPage() {
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
-    const zahlungenCount = await prisma.zahlung.count({
+    ausstehendeZahlungen = await prisma.zahlung.findMany({
       where: {
         status: 'AUSSTEHEND',
       },
+      include: {
+        fahrzeug: { include: { halter: true } },
+        fahrer: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
     });
-    ausstehendeZahlungen = Array(zahlungenCount).fill(null);
   } else {
     // USER sieht eigene offene Fahrten und Buchungen für eigene Fahrzeuge
     offeneFahrten = await prisma.buchung.findMany({
@@ -78,17 +83,30 @@ export default async function DashboardPage() {
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
-    // User sieht ausstehende Zahlungen wo er Fahrer oder Halter ist
-    const userZahlungenCount = await prisma.zahlung.count({
+    // User sieht nur ausstehende Zahlungen, bei denen er selbst noch bestätigen muss
+    ausstehendeZahlungen = await prisma.zahlung.findMany({
       where: {
         status: 'AUSSTEHEND',
         OR: [
-          { fahrerId: userId },
-          { fahrzeug: { halterId: userId } },
+          // Als Fahrer: eigene Bestätigung noch offen
+          {
+            fahrerId: userId,
+            bestaetigung_fahrer: false,
+          },
+          // Als Halter: Halter-Bestätigung noch offen
+          {
+            fahrzeug: { halterId: userId },
+            bestaetigung_halter: false,
+          },
         ],
       },
+      include: {
+        fahrzeug: { include: { halter: true } },
+        fahrer: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
     });
-    ausstehendeZahlungen = Array(userZahlungenCount).fill(null);
   }
 
   stats.offeneFahrten = offeneFahrten.length;
@@ -326,6 +344,72 @@ export default async function DashboardPage() {
                   <button className="text-sm font-medium text-orange-700 hover:text-orange-800 px-4 py-2 bg-white rounded-lg border border-orange-200">
                     Fahrt erfassen
                   </button>
+                </Link>
+              )) ?? null}
+            </div>
+          </div>
+        )}
+
+        {/* Offene Zahlungen - Detail-Liste */}
+        {ausstehendeZahlungen.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-yellow-600" aria-hidden="true" />
+                <h2 className="text-xl font-bold text-gray-900">Offene Zahlungen</h2>
+                <span className="bg-yellow-100 text-yellow-700 text-xs font-medium px-2 py-1 rounded-full">
+                  {ausstehendeZahlungen.length}
+                </span>
+              </div>
+              <Link
+                href="/abrechnung"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Zur Abrechnung
+              </Link>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Diese Zahlungen sind noch nicht von allen Beteiligten bestätigt.
+            </p>
+            <div className="space-y-3">
+              {ausstehendeZahlungen?.map?.((zahlung: any) => (
+                <Link
+                  key={zahlung?.id}
+                  href="/abrechnung"
+                  className="flex items-center gap-4 p-4 rounded-lg border border-yellow-200 bg-yellow-50 hover:bg-yellow-100 transition-colors"
+                >
+                  <div className="bg-yellow-100 p-3 rounded-lg">
+                    <Wallet className="w-6 h-6 text-yellow-600" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate">
+                      {zahlung?.fahrzeug?.name ?? 'Unbekanntes Fahrzeug'}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {formatCurrency(zahlung?.betrag ?? 0)} €
+                      {zahlung?.beschreibung ? ` · ${zahlung.beschreibung}` : ''}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Fahrer: {getUserDisplayName(zahlung?.fahrer)}
+                      {zahlung?.fahrzeug?.halter && (
+                        <>
+                          {' '}• Halter: {getUserDisplayName(zahlung.fahrzeug.halter)}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    {!zahlung?.bestaetigung_fahrer && (
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                        Fahrer-Bestätigung offen
+                      </span>
+                    )}
+                    {!zahlung?.bestaetigung_halter && (
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                        Halter-Bestätigung offen
+                      </span>
+                    )}
+                  </div>
                 </Link>
               )) ?? null}
             </div>
