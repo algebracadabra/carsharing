@@ -60,7 +60,7 @@ export default function FahrzeugePage() {
     return <LoadingState />;
   }
 
-  const addButton = userRole === 'ADMIN' ? (
+  const addButton = userRole === 'ADMIN' || userRole === 'USER' ? (
     <Link
       href="/fahrzeuge/neu"
       className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"
@@ -88,8 +88,8 @@ export default function FahrzeugePage() {
         <EmptyState
           icon={Car}
           title="Noch keine Fahrzeuge vorhanden"
-          description={userRole === 'ADMIN' ? 'Fügen Sie Ihr erstes Fahrzeug hinzu' : 'Es sind noch keine Fahrzeuge verfügbar'}
-          action={userRole === 'ADMIN' ? (
+          description={userRole === 'ADMIN' || userRole === 'USER' ? 'Fügen Sie Ihr erstes Fahrzeug hinzu' : 'Es sind noch keine Fahrzeuge verfügbar'}
+          action={userRole === 'ADMIN' || userRole === 'USER' ? (
             <Link
               href="/fahrzeuge/neu"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md hover:shadow-lg"

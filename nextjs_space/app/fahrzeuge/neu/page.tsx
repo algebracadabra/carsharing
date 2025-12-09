@@ -24,18 +24,28 @@ export default function NeuFahrzeugPage() {
   });
 
   const userRole = (session?.user as any)?.role;
+  const userId = (session?.user as any)?.id;
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-    // Nicht-Admins zur Fahrzeuge-Seite weiterleiten
-    if (status === 'authenticated' && userRole !== 'ADMIN') {
-      router.push('/fahrzeuge');
-    }
-  }, [status, router, userRole]);
 
-  // Benutzer laden für Halter-Auswahl
+    if (status === 'authenticated') {
+      if (userRole === 'ADMIN') {
+        return;
+      }
+
+      if (userId) {
+        setFormData((prev) => ({
+          ...prev,
+          halterId: prev.halterId || userId,
+        }));
+      }
+    }
+  }, [status, router, userRole, userId]);
+
+  // Benutzer laden für Halter-Auswahl (nur für Admins)
   useEffect(() => {
     const fetchUsers = async () => {
       if (userRole !== 'ADMIN') return;
@@ -259,26 +269,28 @@ export default function NeuFahrzeugPage() {
             </select>
           </div>
 
-          <div>
-            <label htmlFor="halterId" className="block text-sm font-medium text-gray-700 mb-2">
-              Halter (Fahrzeugbesitzer) *
-            </label>
-            <select
-              id="halterId"
-              value={formData.halterId}
-              onChange={(e) => setFormData({ ...formData, halterId: e.target.value })}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              aria-required="true"
-            >
-              <option value="">Halter auswählen...</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name} ({user.email}) - {user.role}
-                </option>
-              ))}
-            </select>
-          </div>
+          {userRole === 'ADMIN' ? (
+            <div>
+              <label htmlFor="halterId" className="block text-sm font-medium text-gray-700 mb-2">
+                Halter (Fahrzeugbesitzer) *
+              </label>
+              <select
+                id="halterId"
+                value={formData.halterId}
+                onChange={(e) => setFormData({ ...formData, halterId: e.target.value })}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                aria-required="true"
+              >
+                <option value="">Halter auswählen...</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email}) - {user.role}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
 
           <div className="flex gap-4 pt-4">
             <button

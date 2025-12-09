@@ -33,20 +33,31 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { user, error } = await requireAdmin();
+    const { user, error } = await requireAuth();
     if (error) return error;
+
+    if (!user || !user.role) {
+      return unauthorizedResponse('Nicht autorisiert');
+    }
+
+    if (!['ADMIN', 'USER'].includes(user.role)) {
+      return forbiddenResponse('Sie haben keine Berechtigung, ein Fahrzeug anzulegen');
+    }
 
     const body = await request.json();
     const { name, foto, kilometerstand, kilometerpauschale, schluesselablageort, status, halterId } = body;
 
+    // Determine effective halterId: Admins may choose, others are fixed to themselves
+    const effectiveHalterId = user.role === 'ADMIN' ? halterId : user.id;
+
     // Validate required fields
-    if (!name || kilometerstand === undefined || !kilometerpauschale || !schluesselablageort || !halterId) {
+    if (!name || kilometerstand === undefined || !kilometerpauschale || !schluesselablageort || !effectiveHalterId) {
       return errorResponse('Alle Pflichtfelder müssen ausgefüllt werden (inkl. Halter)');
     }
 
     // Validate halter exists
     const halter = await prisma.user.findUnique({
-      where: { id: halterId },
+      where: { id: effectiveHalterId },
     });
 
     if (!halter) {
@@ -68,7 +79,7 @@ export async function POST(request: Request) {
         kilometerpauschale: parsedKilometerpauschale,
         schluesselablageort,
         status: status || 'VERFUEGBAR',
-        halterId,
+        halterId: effectiveHalterId,
       },
       include: { halter: true },
     });
