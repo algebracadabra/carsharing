@@ -158,11 +158,17 @@ export async function PATCH(
       naechsterTuev: body.naechsterTuev,
       macken: body.macken,
       sonstigeHinweise: body.sonstigeHinweise,
+      // Plan-Kosten (nur über Fahrzeugseite editierbar)
+      treibstoffKostenPlan: body.treibstoffKostenPlan !== undefined
+        ? parseFloat(body.treibstoffKostenPlan)
+        : undefined,
+      wartungsReparaturKostenPlan: body.wartungsReparaturKostenPlan !== undefined
+        ? parseFloat(body.wartungsReparaturKostenPlan)
+        : undefined,
     };
 
-    // Lebenszyklus-Felder - nur Admin kann diese bearbeiten
-    console.log('Lebenszyklus-Update Check:', { isAdmin, userRole, baujahr: body.baujahr });
-    if (isAdmin) {
+    // Lebenszyklus-Felder - Owner und Admin können diese bearbeiten
+    if (isOwner || isAdmin) {
       if (body.baujahr !== undefined) {
         updateData.baujahr = body.baujahr !== '' ? parseInt(body.baujahr) : null;
       }
@@ -180,21 +186,8 @@ export async function PATCH(
       }
     }
 
-    // treibstoffKosten is incremental - add to existing value
-    if (body.treibstoffKostenIncrement !== undefined) {
-      const increment = parseFloat(body.treibstoffKostenIncrement);
-      if (increment > 0) {
-        updateData.treibstoffKosten = (fahrzeug.treibstoffKosten ?? 0) + increment;
-      }
-    }
-
-    // wartungsReparaturKosten is incremental - add to existing value
-    if (body.wartungsReparaturKostenIncrement !== undefined) {
-      const increment = parseFloat(body.wartungsReparaturKostenIncrement);
-      if (increment > 0) {
-        updateData.wartungsReparaturKosten = (fahrzeug.wartungsReparaturKosten ?? 0) + increment;
-      }
-    }
+    // treibstoffKosten und wartungsReparaturKosten werden nicht mehr direkt editiert
+    // Sie werden aus den Zahlungen berechnet und in der Statistik-API angezeigt
 
     // Remove undefined values
     Object.keys(updateData).forEach(

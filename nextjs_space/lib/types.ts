@@ -36,9 +36,11 @@ export interface Fahrzeug {
   foto: string | null;
   kilometerstand: number;
   kilometerpauschale: number;
-  treibstoffKosten: number;
+  treibstoffKosten: number;              // Ist-Kosten (aus Zahlungen)
+  wartungsReparaturKosten: number;       // Ist-Kosten (aus Zahlungen)
+  treibstoffKostenPlan: number;          // Plan-Kosten (nur UI editierbar)
+  wartungsReparaturKostenPlan: number;   // Plan-Kosten (nur UI editierbar)
   fixkosten: number;
-  wartungsReparaturKosten: number;
   halterId: string;
   schluesselablageort: string;
   status: FahrzeugStatus;

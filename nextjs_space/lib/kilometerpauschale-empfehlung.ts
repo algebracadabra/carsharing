@@ -121,9 +121,13 @@ export function berechneKilometerpauschaleEmpfehlung(
   }
 
   // 1. Treibstoffkosten pro km
-  const treibstoffProKm = gefahreneKmImZeitraum > 0 
-    ? treibstoffKosten / gefahreneKmImZeitraum 
-    : 0;
+  // Primär auf Basis der geplanten Jahreskilometer (geschaetzteKmProJahr).
+  // Falls diese nicht gepflegt sind, Fallback auf die tatsächlich gefahrenen km im Zeitraum.
+  const treibstoffProKm = geschaetzteKmProJahr && geschaetzteKmProJahr > 0
+    ? treibstoffKosten / geschaetzteKmProJahr
+    : (gefahreneKmImZeitraum > 0
+      ? treibstoffKosten / gefahreneKmImZeitraum
+      : 0);
 
   // 2. Fixkosten pro km (Versicherung + Steuer, Wertverlust wird separat berechnet)
   // Fixkosten werden auf die geschätzte Jahresfahrleistung umgelegt
@@ -133,9 +137,13 @@ export function berechneKilometerpauschaleEmpfehlung(
   const fixkostenProKm = jahresKm > 0 ? fixkostenProJahr / jahresKm : 0;
 
   // 3. Wartungs-/Reparaturkosten pro km
-  const wartungProKm = gefahreneKmImZeitraum > 0 
-    ? wartungsReparaturKosten / gefahreneKmImZeitraum 
-    : 0;
+  // Primär auf Basis der geplanten Jahreskilometer (geschaetzteKmProJahr).
+  // Falls diese nicht gepflegt sind, Fallback auf die tatsächlich gefahrenen km im Zeitraum.
+  const wartungProKm = geschaetzteKmProJahr && geschaetzteKmProJahr > 0
+    ? wartungsReparaturKosten / geschaetzteKmProJahr
+    : (gefahreneKmImZeitraum > 0
+      ? wartungsReparaturKosten / gefahreneKmImZeitraum
+      : 0);
 
   // 4. Wertverlust pro km (falls Lebenszyklus-Daten vorhanden)
   let wertverlustProKm = 0;
@@ -150,14 +158,20 @@ export function berechneKilometerpauschaleEmpfehlung(
     geschaetzteKmProJahr > 0
   ) {
     try {
+      const aktuellesJahr = new Date().getFullYear();
+      const alter = aktuellesJahr - baujahr;
+      const kilometerstandFuerModell =
+        alter > 0 && geschaetzteKmProJahr > 0
+          ? geschaetzteKmProJahr * alter
+          : kilometerstand;
       const wertverlustInput: WertverlustInput = {
-        aktuellesJahr: new Date().getFullYear(),
+        aktuellesJahr,
         baujahr,
         restwert,
         erwarteteKmEndOfLife,
         erwarteteJahreEndOfLife,
         geschaetzteKmProJahr,
-        kilometerstand,
+        kilometerstand: kilometerstandFuerModell,
       };
       const wertverlustResult = berechneWertverlust(wertverlustInput);
       wertverlustProKm = wertverlustResult.wertverlustProKm;

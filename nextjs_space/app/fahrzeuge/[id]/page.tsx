@@ -24,13 +24,16 @@ export default function FahrzeugDetailPage() {
   const [editingCosts, setEditingCosts] = useState(false);
   const [savingCosts, setSavingCosts] = useState(false);
   const [costFormData, setCostFormData] = useState({
-    treibstoffKostenIncrement: '',
-    wartungsReparaturKostenIncrement: '',
+    treibstoffKostenPlan: '0',
+    wartungsReparaturKostenPlan: '0',
     versicherungJaehrlich: '0',
     steuerJaehrlich: '0',
   });
+  const [kostenZeitraum, setKostenZeitraum] = useState<'monat' | 'jahr' | 'gesamt'>('jahr');
   const [kontostand, setKontostand] = useState<any>(null);
   const [wertverlust, setWertverlust] = useState<WertverlustOutput | null>(null);
+  const [statistik, setStatistik] = useState<any>(null);
+  const [statistikZeitraum, setStatistikZeitraum] = useState<'monat' | 'jahr' | 'gesamt'>('monat');
   
   // Einklappbare Sektionen
   const [showLebenszyklus, setShowLebenszyklus] = useState(false);
@@ -58,8 +61,15 @@ export default function FahrzeugDetailPage() {
     if (status === 'authenticated' && id) {
       fetchFahrzeug();
       fetchKontostand();
+      fetchStatistik();
     }
   }, [status, id]);
+
+  useEffect(() => {
+    if (status === 'authenticated' && id) {
+      fetchStatistik();
+    }
+  }, [statistikZeitraum]);
 
   const fetchKontostand = async () => {
     try {
@@ -101,6 +111,18 @@ export default function FahrzeugDetailPage() {
     }
   };
 
+  const fetchStatistik = async () => {
+    try {
+      const response = await fetch(`/api/fahrzeuge/${id}/statistik?zeitraum=${statistikZeitraum}`);
+      if (response.ok) {
+        const data = await response.json();
+        setStatistik(data);
+      }
+    } catch (error) {
+      console.error('Error fetching statistik:', error);
+    }
+  };
+
   const fetchFahrzeug = async () => {
     try {
       const response = await fetch(`/api/fahrzeuge/${id}`);
@@ -110,8 +132,8 @@ export default function FahrzeugDetailPage() {
         berechneWertverlustFuerFahrzeug(data);
         
         setCostFormData({
-          treibstoffKostenIncrement: '',
-          wartungsReparaturKostenIncrement: '',
+          treibstoffKostenPlan: (data.treibstoffKostenPlan ?? 0).toString(),
+          wartungsReparaturKostenPlan: (data.wartungsReparaturKostenPlan ?? 0).toString(),
           versicherungJaehrlich: (data.versicherungJaehrlich ?? 0).toString(),
           steuerJaehrlich: (data.steuerJaehrlich ?? 0).toString(),
         });
@@ -135,8 +157,8 @@ export default function FahrzeugDetailPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          treibstoffKostenIncrement: costFormData.treibstoffKostenIncrement || undefined,
-          wartungsReparaturKostenIncrement: costFormData.wartungsReparaturKostenIncrement || undefined,
+          treibstoffKostenPlan: costFormData.treibstoffKostenPlan,
+          wartungsReparaturKostenPlan: costFormData.wartungsReparaturKostenPlan,
           versicherungJaehrlich: costFormData.versicherungJaehrlich,
           steuerJaehrlich: costFormData.steuerJaehrlich,
         }),
@@ -275,7 +297,7 @@ export default function FahrzeugDetailPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-blue-50 rounded-lg p-6">
               <div className="flex items-center gap-3 mb-2">
                 <TrendingUp className="w-5 h-5 text-blue-600" aria-hidden="true" />
@@ -303,6 +325,54 @@ export default function FahrzeugDetailPage() {
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">
                 {fahrzeug?.schluesselablageort}
+              </p>
+            </div>
+
+            {/* Kilometer-Statistik mit Zeitraum-Auswahl */}
+            <div className="bg-amber-50 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <Route className="w-5 h-5 text-amber-600" aria-hidden="true" />
+                  <h3 className="font-semibold text-gray-900">Gefahrene km</h3>
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-amber-600">
+                {formatNumber(statistik?.gefahreneKm ?? 0)} km
+              </p>
+              <div className="flex gap-1 mt-2">
+                <button
+                  onClick={() => setStatistikZeitraum('monat')}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    statistikZeitraum === 'monat'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                  }`}
+                >
+                  Monat
+                </button>
+                <button
+                  onClick={() => setStatistikZeitraum('jahr')}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    statistikZeitraum === 'jahr'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                  }`}
+                >
+                  Jahr
+                </button>
+                <button
+                  onClick={() => setStatistikZeitraum('gesamt')}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    statistikZeitraum === 'gesamt'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                  }`}
+                >
+                  Gesamt
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {statistik?.anzahlFahrten ?? 0} Fahrten • {formatCurrency(statistik?.einnahmen ?? 0)} € Einnahmen
               </p>
             </div>
           </div>
@@ -339,8 +409,8 @@ export default function FahrzeugDetailPage() {
                 onClick={() => {
                   setEditingCosts(false);
                   setCostFormData({
-                    treibstoffKostenIncrement: '',
-                    wartungsReparaturKostenIncrement: '',
+                    treibstoffKostenPlan: (fahrzeug?.treibstoffKostenPlan ?? 0).toString(),
+                    wartungsReparaturKostenPlan: (fahrzeug?.wartungsReparaturKostenPlan ?? 0).toString(),
                     versicherungJaehrlich: (fahrzeug?.versicherungJaehrlich ?? 0).toString(),
                     steuerJaehrlich: (fahrzeug?.steuerJaehrlich ?? 0).toString(),
                   });
@@ -355,144 +425,227 @@ export default function FahrzeugDetailPage() {
         </div>
 
         {editingCosts ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-orange-50 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Fuel className="w-5 h-5 text-orange-600" aria-hidden="true" />
-                <label htmlFor="treibstoffKosten" className="font-semibold text-gray-900">Treibstoffkosten hinzufügen</label>
-              </div>
-              <p className="text-sm text-gray-600 mb-2">
-                Aktuell: {formatCurrency(fahrzeug?.treibstoffKosten)} €
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-orange-600">+</span>
-                <input
-                  id="treibstoffKosten"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={costFormData.treibstoffKostenIncrement}
-                  onChange={(e) => setCostFormData({ ...costFormData, treibstoffKostenIncrement: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg font-bold"
-                />
-                <span className="text-lg font-bold text-orange-600">€</span>
+          <div className="space-y-6">
+            {/* Plan-Werte */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" aria-hidden="true" />
+                Plan-Werte (Jahresbudget)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-orange-50 rounded-lg p-4">
+                  <label htmlFor="treibstoffKostenPlan" className="text-sm font-medium text-gray-700 block mb-1">Treibstoffkosten</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="treibstoffKostenPlan"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={costFormData.treibstoffKostenPlan}
+                      onChange={(e) => setCostFormData({ ...costFormData, treibstoffKostenPlan: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent font-bold"
+                    />
+                    <span className="font-bold text-orange-600">€</span>
+                  </div>
+                </div>
+
+                <div className="bg-rose-50 rounded-lg p-4">
+                  <label htmlFor="wartungsReparaturKostenPlan" className="text-sm font-medium text-gray-700 block mb-1">Wartung & Reparatur</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="wartungsReparaturKostenPlan"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={costFormData.wartungsReparaturKostenPlan}
+                      onChange={(e) => setCostFormData({ ...costFormData, wartungsReparaturKostenPlan: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent font-bold"
+                    />
+                    <span className="font-bold text-rose-600">€</span>
+                  </div>
+                </div>
+
+                <div className="bg-teal-50 rounded-lg p-4">
+                  <label htmlFor="versicherungJaehrlich" className="text-sm font-medium text-gray-700 block mb-1">Versicherung</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="versicherungJaehrlich"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={costFormData.versicherungJaehrlich}
+                      onChange={(e) => setCostFormData({ ...costFormData, versicherungJaehrlich: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent font-bold"
+                    />
+                    <span className="font-bold text-teal-600">€/Jahr</span>
+                  </div>
+                </div>
+
+                <div className="bg-indigo-50 rounded-lg p-4">
+                  <label htmlFor="steuerJaehrlich" className="text-sm font-medium text-gray-700 block mb-1">KFZ-Steuer</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="steuerJaehrlich"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={costFormData.steuerJaehrlich}
+                      onChange={(e) => setCostFormData({ ...costFormData, steuerJaehrlich: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-bold"
+                    />
+                    <span className="font-bold text-indigo-600">€/Jahr</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="bg-rose-50 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Wrench className="w-5 h-5 text-rose-600" aria-hidden="true" />
-                <label htmlFor="wartungsReparaturKosten" className="font-semibold text-gray-900">Wartung & Reparatur hinzufügen</label>
-              </div>
-              <p className="text-sm text-gray-600 mb-2">
-                Aktuell: {formatCurrency(fahrzeug?.wartungsReparaturKosten)} €
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-rose-600">+</span>
-                <input
-                  id="wartungsReparaturKosten"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={costFormData.wartungsReparaturKostenIncrement}
-                  onChange={(e) => setCostFormData({ ...costFormData, wartungsReparaturKostenIncrement: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-lg font-bold"
-                />
-                <span className="text-lg font-bold text-rose-600">€</span>
-              </div>
-            </div>
-
-            <div className="bg-teal-50 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Shield className="w-5 h-5 text-teal-600" aria-hidden="true" />
-                <label htmlFor="versicherungJaehrlich" className="font-semibold text-gray-900">Versicherung jährlich</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  id="versicherungJaehrlich"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={costFormData.versicherungJaehrlich}
-                  onChange={(e) => setCostFormData({ ...costFormData, versicherungJaehrlich: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-lg font-bold"
-                />
-                <span className="text-lg font-bold text-teal-600">€/Jahr</span>
-              </div>
-            </div>
-
-            <div className="bg-indigo-50 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <PiggyBank className="w-5 h-5 text-indigo-600" aria-hidden="true" />
-                <label htmlFor="steuerJaehrlich" className="font-semibold text-gray-900">KFZ-Steuer jährlich</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  id="steuerJaehrlich"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={costFormData.steuerJaehrlich}
-                  onChange={(e) => setCostFormData({ ...costFormData, steuerJaehrlich: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg font-bold"
-                />
-                <span className="text-lg font-bold text-indigo-600">€/Jahr</span>
-              </div>
-            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-orange-50 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Fuel className="w-5 h-5 text-orange-600" aria-hidden="true" />
-                <h3 className="font-semibold text-gray-900">Treibstoffkosten</h3>
+          <div className="space-y-4">
+            {/* Zeitraum-Auswahl für Ist-Kosten */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">Ist-Kosten aus Zahlungen:</p>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setKostenZeitraum('monat')}
+                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                    kostenZeitraum === 'monat'
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Monat
+                </button>
+                <button
+                  onClick={() => setKostenZeitraum('jahr')}
+                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                    kostenZeitraum === 'jahr'
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Jahr
+                </button>
+                <button
+                  onClick={() => setKostenZeitraum('gesamt')}
+                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                    kostenZeitraum === 'gesamt'
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Gesamt
+                </button>
               </div>
-              <p className="text-2xl font-bold text-orange-600">
-                {formatCurrency(fahrzeug?.treibstoffKosten)} €
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Summe aus TANKEN-Zahlungen</p>
             </div>
 
-            <div className="bg-rose-50 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Wrench className="w-5 h-5 text-rose-600" aria-hidden="true" />
-                <h3 className="font-semibold text-gray-900">Wartung & Reparatur</h3>
+            {/* Treibstoff & Wartung - Plan vs Ist */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-orange-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Fuel className="w-5 h-5 text-orange-600" aria-hidden="true" />
+                  <h3 className="font-semibold text-gray-900">Treibstoffkosten</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Ist ({statistik?.uebersicht?.[kostenZeitraum]?.label || kostenZeitraum})</p>
+                    <p className="text-xl font-bold text-orange-600">
+                      {formatCurrency(statistik?.uebersicht?.[kostenZeitraum]?.treibstoffKosten ?? 0)} €
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Plan (Jahr)</p>
+                    <p className="text-xl font-bold text-orange-400">
+                      {formatCurrency(fahrzeug?.treibstoffKostenPlan)} €
+                    </p>
+                  </div>
+                </div>
+                {fahrzeug?.treibstoffKostenPlan > 0 && kostenZeitraum === 'jahr' && (
+                  <div className="mt-2">
+                    <div className="h-2 bg-orange-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${
+                          ((statistik?.uebersicht?.jahr?.treibstoffKosten ?? 0) / fahrzeug?.treibstoffKostenPlan) > 1 
+                            ? 'bg-red-500' 
+                            : 'bg-orange-500'
+                        }`}
+                        style={{ width: `${Math.min(100, ((statistik?.uebersicht?.jahr?.treibstoffKosten ?? 0) / fahrzeug?.treibstoffKostenPlan) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {Math.round(((statistik?.uebersicht?.jahr?.treibstoffKosten ?? 0) / fahrzeug?.treibstoffKostenPlan) * 100)}% des Jahresplans
+                    </p>
+                  </div>
+                )}
               </div>
-              <p className="text-2xl font-bold text-rose-600">
-                {formatCurrency(fahrzeug?.wartungsReparaturKosten)} €
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Summe aus Pflege/Wartung/Reparatur</p>
+
+              <div className="bg-rose-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Wrench className="w-5 h-5 text-rose-600" aria-hidden="true" />
+                  <h3 className="font-semibold text-gray-900">Wartung & Reparatur</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Ist ({statistik?.uebersicht?.[kostenZeitraum]?.label || kostenZeitraum})</p>
+                    <p className="text-xl font-bold text-rose-600">
+                      {formatCurrency(statistik?.uebersicht?.[kostenZeitraum]?.wartungsReparaturKosten ?? 0)} €
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Plan (Jahr)</p>
+                    <p className="text-xl font-bold text-rose-400">
+                      {formatCurrency(fahrzeug?.wartungsReparaturKostenPlan)} €
+                    </p>
+                  </div>
+                </div>
+                {fahrzeug?.wartungsReparaturKostenPlan > 0 && kostenZeitraum === 'jahr' && (
+                  <div className="mt-2">
+                    <div className="h-2 bg-rose-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${
+                          ((statistik?.uebersicht?.jahr?.wartungsReparaturKosten ?? 0) / fahrzeug?.wartungsReparaturKostenPlan) > 1 
+                            ? 'bg-red-500' 
+                            : 'bg-rose-500'
+                        }`}
+                        style={{ width: `${Math.min(100, ((statistik?.uebersicht?.jahr?.wartungsReparaturKosten ?? 0) / fahrzeug?.wartungsReparaturKostenPlan) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {Math.round(((statistik?.uebersicht?.jahr?.wartungsReparaturKosten ?? 0) / fahrzeug?.wartungsReparaturKostenPlan) * 100)}% des Jahresplans
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="bg-teal-50 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Shield className="w-5 h-5 text-teal-600" aria-hidden="true" />
-                <h3 className="font-semibold text-gray-900">Versicherung</h3>
+            {/* Fixkosten */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-teal-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-5 h-5 text-teal-600" aria-hidden="true" />
+                  <h3 className="font-semibold text-gray-900">Versicherung</h3>
+                </div>
+                <p className="text-xl font-bold text-teal-600">
+                  {formatCurrency(fahrzeug?.versicherungJaehrlich)} €/Jahr
+                </p>
               </div>
-              <p className="text-2xl font-bold text-teal-600">
-                {formatCurrency(fahrzeug?.versicherungJaehrlich)} €/Jahr
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Jährliche Versicherungskosten</p>
-            </div>
 
-            <div className="bg-indigo-50 rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <PiggyBank className="w-5 h-5 text-indigo-600" aria-hidden="true" />
-                <h3 className="font-semibold text-gray-900">KFZ-Steuer</h3>
+              <div className="bg-indigo-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <PiggyBank className="w-5 h-5 text-indigo-600" aria-hidden="true" />
+                  <h3 className="font-semibold text-gray-900">KFZ-Steuer</h3>
+                </div>
+                <p className="text-xl font-bold text-indigo-600">
+                  {formatCurrency(fahrzeug?.steuerJaehrlich)} €/Jahr
+                </p>
               </div>
-              <p className="text-2xl font-bold text-indigo-600">
-                {formatCurrency(fahrzeug?.steuerJaehrlich)} €/Jahr
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Jährliche KFZ-Steuer</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Kilometerpauschalen-Empfehlung - nur für Owner/Admin */}
-      {(isOwner || isAdmin) && fahrzeug && (
+      {/* Kilometerpauschalen-Empfehlung - für alle sichtbar */}
+      {fahrzeug && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <KilometerpauschaleEmpfehlung
             fahrzeugId={id}
@@ -519,7 +672,7 @@ export default function FahrzeugDetailPage() {
               <ChevronDown className="w-5 h-5 text-gray-500" />
             )}
           </button>
-          {isAdmin && (
+          {canEdit && (
             <Link
               href={`/fahrzeuge/${id}/bearbeiten`}
               className="ml-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
