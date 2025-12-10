@@ -17,6 +17,7 @@ export default function BearbeitenFahrzeugPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [originalKilometerpauschale, setOriginalKilometerpauschale] = useState('');
+  const [halterId, setHalterId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     kilometerstand: '',
@@ -24,7 +25,7 @@ export default function BearbeitenFahrzeugPage() {
     schluesselablageort: '',
     status: 'VERFUEGBAR',
     foto: '',
-    // Lebenszyklus-Felder (nur Admin)
+    // Lebenszyklus-Felder (Owner und Admin)
     baujahr: '',
     restwert: '',
     erwarteteKmEndOfLife: '',
@@ -113,11 +114,13 @@ export default function BearbeitenFahrzeugPage() {
           sonstigeHinweise: data.sonstigeHinweise || '',
         });
 
-        // Check permissions - nur Owner oder Admin
-        const isOwner = data.halterId === userId;
-        const isAdmin = userRole === 'ADMIN';
+        setHalterId(data.halterId);
 
-        if (!isOwner && !isAdmin) {
+        // Check permissions - nur Owner oder Admin
+        const isOwnerCheck = data.halterId === userId;
+        const isAdminCheck = userRole === 'ADMIN';
+
+        if (!isOwnerCheck && !isAdminCheck) {
           router.push(`/fahrzeuge/${id}`);
         }
       }
@@ -341,12 +344,12 @@ export default function BearbeitenFahrzeugPage() {
             </select>
           </div>
 
-          {/* Lebenszyklus Section - nur für Admin */}
-          {userRole === 'ADMIN' && (
+          {/* Lebenszyklus Section - für Owner und Admin */}
+          {(userRole === 'ADMIN' || halterId === userId) && (
             <div className="border-t border-gray-200 pt-6 mt-6">
               <div className="flex items-center gap-2 mb-6">
                 <TrendingUp className="w-5 h-5 text-gray-700" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-gray-900">Lebenszyklus (nur Admin)</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Lebenszyklus & Wertentwicklung</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
